@@ -2,7 +2,7 @@ import { isSupabaseConfigured } from '../services/supabaseClient'
 
 /**
  * Всё «брендирование» сайта в одном месте.
- * Меняешь ник или ссылку на Twitch — правишь только этот файл.
+ * Меняешь ник или ссылку на Twitch/Telegram — правишь только этот файл.
  */
 export const site = {
   nickname: 'mcmotorolla',
@@ -11,8 +11,31 @@ export const site = {
   subtitle:
     'Честный дневник: оценка от 1 до 10, сколько часов заняло и как это было. Без спойлеров там, где можно без них.',
   twitchUrl: 'https://www.twitch.tv/mcmotorolla',
+  telegramUrl: 'https://t.me/mcmotoroller',
   year: new Date().getFullYear()
 }
+
+/**
+ * Площадки стримера. Из этого списка строятся иконки в шапке и ссылки в подвале,
+ * поэтому новую площадку достаточно дописать здесь.
+ * Пустой url — площадка просто не показывается.
+ */
+export const socials = [
+  {
+    key: 'twitch',
+    label: 'Twitch',
+    title: 'Канал на Twitch',
+    icon: 'pi pi-twitch',
+    url: site.twitchUrl
+  },
+  {
+    key: 'telegram',
+    label: 'Telegram',
+    title: 'Телеграм-канал',
+    icon: 'pi pi-telegram',
+    url: site.telegramUrl
+  }
+].filter((social) => Boolean(social.url))
 
 /**
  * Режим работы данных.

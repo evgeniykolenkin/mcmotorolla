@@ -1,6 +1,7 @@
 # mcmotorolla — дневник пройденных игр
 
-Публичный сайт-дневник стримера [mcmotorolla](https://www.twitch.tv/mcmotorolla): список пройденных игр
+Публичный сайт-дневник стримера [mcmotorolla](https://www.twitch.tv/mcmotorolla) (Twitch ·
+[Telegram](https://t.me/mcmotoroller)): список пройденных игр
 с оценкой от 1 до 10 и заметками о прохождении. Читать может любой, редактировать — только владелец
 через скрытую страницу `/admin`.
 

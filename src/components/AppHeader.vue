@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import { site } from '../config/site'
+import { site, socials } from '../config/site'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
 
@@ -45,15 +45,17 @@ function openCreate() {
         />
 
         <a
-          v-if="site.twitchUrl"
-          :href="site.twitchUrl"
+          v-for="social in socials"
+          :key="social.key"
+          :href="social.url"
           target="_blank"
           rel="noopener noreferrer"
-          class="nav__link nav__link--twitch"
-          v-tooltip.bottom="'Канал на Twitch'"
+          class="nav__link"
+          :class="`nav__link--${social.key}`"
+          v-tooltip.bottom="social.title"
         >
-          <i class="pi pi-twitch" />
-          <span class="nav__twitch-text">Twitch</span>
+          <i :class="social.icon" />
+          <span class="nav__social-text">{{ social.label }}</span>
         </a>
 
         <Button
@@ -181,12 +183,16 @@ function openCreate() {
   color: #a970ff;
 }
 
+.nav__link--telegram i {
+  color: #2aabee;
+}
+
 @media (max-width: 720px) {
   .brand__text small {
     display: none;
   }
 
-  .nav__twitch-text {
+  .nav__social-text {
     display: none;
   }
 

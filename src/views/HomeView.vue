@@ -19,8 +19,8 @@ const { isOwner } = useAuth()
 
 onMounted(ensureLoaded)
 
-function openTwitch() {
-  window.open(site.twitchUrl, '_blank', 'noopener')
+function openSocial(url) {
+  window.open(url, '_blank', 'noopener')
 }
 </script>
 
@@ -36,7 +36,15 @@ function openTwitch() {
             v-if="site.twitchUrl"
             label="Смотреть на Twitch"
             icon="pi pi-twitch"
-            @click="openTwitch"
+            @click="openSocial(site.twitchUrl)"
+          />
+          <Button
+            v-if="site.telegramUrl"
+            label="Телеграм-канал"
+            icon="pi pi-telegram"
+            outlined
+            severity="secondary"
+            @click="openSocial(site.telegramUrl)"
           />
           <Button
             v-if="isOwner"
