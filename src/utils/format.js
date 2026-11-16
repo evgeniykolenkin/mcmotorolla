@@ -1,0 +1,73 @@
+/** '2024-03-15' → '15 марта 2024' */
+export function formatDate(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  return date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
+/** 12.5 → '12,5 ч' */
+export function formatHours(value) {
+  if (value === null || value === undefined || value === '') return ''
+  return `${String(value).replace('.', ',')} ч`
+}
+
+export const RATING_LABELS = {
+  10: 'Шедевр',
+  9: 'Великолепно',
+  8: 'Отлично',
+  7: 'Хорошо',
+  6: 'Неплохо',
+  5: 'Средне',
+  4: 'Слабо',
+  3: 'Плохо',
+  2: 'Очень плохо',
+  1: 'Ужасно'
+}
+
+/**
+ * Цветовая шкала оценки 1–10.
+ * tone — суффикс для CSS-класса, label — текстовое пояснение.
+ */
+export function ratingTone(rating = 0) {
+  const value = Number(rating)
+
+  if (value >= 9) return { tone: 'great', label: RATING_LABELS[value] ?? 'Топ' }
+  if (value >= 7) return { tone: 'good', label: RATING_LABELS[value] ?? 'Хорошо' }
+  if (value >= 5) return { tone: 'meh', label: RATING_LABELS[value] ?? 'Средне' }
+  return { tone: 'bad', label: RATING_LABELS[value] ?? 'Слабо' }
+}
+
+/** Многострочный текст → массив абзацев (для аккуратного рендера отзыва). */
+export function toParagraphs(text = '') {
+  return String(text)
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+}
+
+/** Date → 'YYYY-MM-DD' (локальная дата, без сдвигов часового пояса). */
+export function toIsoDate(value) {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/** 'YYYY-MM-DD' → Date (локальная полночь). */
+export function fromIsoDate(value) {
+  if (!value) return new Date()
+  const [year, month, day] = String(value).split('-').map(Number)
+  if (!year || !month || !day) return new Date()
+
+  return new Date(year, month - 1, day)
+}
+

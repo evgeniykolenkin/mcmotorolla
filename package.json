@@ -1,0 +1,23 @@
+{
+  "name": "mcmotorolla",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@primevue/themes": "^4.5.4",
+    "primeicons": "^8.0.2",
+    "primelocale": "^2.7.0",
+    "primevue": "^4.5.5",
+    "vue": "^3.5.44",
+    "vue-router": "^4.6.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.11",
+    "vite": "^7.3.8"
+  }
+}
