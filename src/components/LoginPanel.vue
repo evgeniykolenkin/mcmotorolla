@@ -1,28 +1,40 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Message from 'primevue/message'
 import { useAuth } from '../composables/useAuth'
-import { isDemoBackend } from '../config/site'
+import { isDemoBackend, ownerEmail } from '../config/site'
 
 const emit = defineEmits(['success'])
 const { signIn } = useAuth()
 
+const email = ref(ownerEmail ?? '')
 const password = ref('')
 const error = ref('')
+const submitting = ref(false)
 
-function submit() {
-  const result = signIn(password.value)
+// В режиме Supabase email нужен для входа; если он задан в .env.local — прячем поле
+const showEmail = computed(() => !isDemoBackend && !ownerEmail)
 
-  if (result.ok) {
-    password.value = ''
-    error.value = ''
-    emit('success')
-    return
+async function submit() {
+  submitting.value = true
+  error.value = ''
+
+  try {
+    const result = await signIn({ email: email.value, password: password.value })
+
+    if (result.ok) {
+      password.value = ''
+      emit('success')
+      return
+    }
+
+    error.value = result.message
+  } finally {
+    submitting.value = false
   }
-
-  error.value = result.message
 }
 </script>
 
@@ -34,11 +46,21 @@ function submit() {
         <div>
           <h2 class="login__title">Вход для владельца</h2>
           <p class="muted login__subtitle">
-            Смотреть игры можно без входа. Пароль нужен только чтобы добавлять и редактировать
+            Смотреть игры можно без входа. Вход нужен только чтобы добавлять и редактировать
             записи.
           </p>
         </div>
       </div>
+
+      <InputText
+        v-if="showEmail"
+        v-model="email"
+        type="email"
+        placeholder="Email владельца"
+        autocomplete="username"
+        fluid
+        input-id="owner-email"
+      />
 
       <Password
         v-model="password"
@@ -47,16 +69,23 @@ function submit() {
         toggle-mask
         fluid
         input-id="owner-password"
+        autocomplete="current-password"
         @keyup.enter="submit"
       />
 
       <Message v-if="error" severity="error" :closable="false" size="small">{{ error }}</Message>
 
-      <Button type="submit" label="Войти" icon="pi pi-sign-in" :disabled="!password" />
+      <Button
+        type="submit"
+        label="Войти"
+        icon="pi pi-sign-in"
+        :loading="submitting"
+        :disabled="!password || (showEmail && !email)"
+      />
 
       <Message v-if="isDemoBackend" severity="secondary" :closable="false" size="small">
         Демо-режим этапа 0: пароль по умолчанию «admin», меняется в
-        <code>.env.local</code> (VITE_OWNER_PASSWORD). Настоящая авторизация — этап 2.
+        <code>.env.local</code> (VITE_OWNER_PASSWORD).
       </Message>
     </form>
   </div>

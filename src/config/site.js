@@ -1,3 +1,5 @@
+import { isSupabaseConfigured } from '../services/supabaseClient'
+
 /**
  * Всё «брендирование» сайта в одном месте.
  * Меняешь ник или ссылку на Twitch — правишь только этот файл.
@@ -15,9 +17,12 @@ export const site = {
 /**
  * Режим работы данных.
  * Этап 0 — данные лежат в localStorage браузера.
- * Этап 1 — подключим Supabase (см. src/services/gamesRepository.js).
+ * Этап 1 — Supabase, если в .env.local заданы VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY.
  */
-export const isDemoBackend = true
+export const isDemoBackend = !isSupabaseConfigured
 
-/** Пароль владельца для заглушки авторизации этапа 0 (НЕ безопасность, этап 2 заменит Supabase Auth). */
+/** Email владельца для входа (Supabase Auth). Если пусто — поле показывается в форме. */
+export const ownerEmail = import.meta.env.VITE_OWNER_EMAIL ?? ''
+
+/** Пароль заглушки этапа 0 — используется только пока Supabase не настроен. */
 export const demoOwnerPassword = import.meta.env.VITE_OWNER_PASSWORD ?? 'admin'

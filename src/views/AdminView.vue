@@ -14,7 +14,7 @@ import RatingBadge from '../components/RatingBadge.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { useAuth } from '../composables/useAuth'
 import { useGames } from '../composables/useGames'
-import { resetToDemo } from '../services/localGamesRepo'
+import { resetToDemo } from '../services/gamesRepository'
 import { formatDate, formatHours } from '../utils/format'
 import { isDemoBackend } from '../config/site'
 
@@ -77,8 +77,8 @@ function onLogin() {
   })
 }
 
-function doSignOut() {
-  signOut()
+async function doSignOut() {
+  await signOut()
   toast.add({ severity: 'secondary', summary: 'Вы вышли', life: 2000 })
 }
 
@@ -100,7 +100,9 @@ function askReset() {
   confirm.require({
     ...confirmAction,
     header: 'Вернуть демо-данные?',
-    message: 'Все локальные изменения будут потеряны и вернутся 10 демо-игр.',
+    message: isDemoBackend
+      ? 'Все локальные изменения будут потеряны и вернутся 10 демо-игр.'
+      : 'В базу добавятся 10 демо-игр. Записи с теми же адресами (slug) будут перезаписаны.',
     icon: 'pi pi-replay',
     acceptProps: { label: 'Вернуть демо', severity: 'warn' },
     accept: async () => {
@@ -132,7 +134,6 @@ function askReset() {
         <div v-if="isOwner" class="admin-head__actions">
           <Button label="Добавить игру" icon="pi pi-plus" @click="openCreate" />
           <Button
-            v-if="isDemoBackend"
             label="Демо-данные"
             icon="pi pi-replay"
             outlined
@@ -157,6 +158,9 @@ function askReset() {
         <Message v-if="isDemoBackend" severity="secondary" :closable="false">
           Этап 0: записи хранятся только в этом браузере (localStorage). Подключение Supabase —
           следующий этап, после него дневник станет общим для всех.
+        </Message>
+        <Message v-else severity="success" :closable="false">
+          Записи хранятся в Supabase и сразу видны всем посетителям. Черновики видите только вы.
         </Message>
 
         <div class="mini-stats">

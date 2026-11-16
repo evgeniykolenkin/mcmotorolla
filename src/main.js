@@ -13,6 +13,7 @@ import './styles/base.css'
 import App from './App.vue'
 import router from './router'
 import { applyInitialTheme } from './composables/useTheme'
+import { initAuth } from './composables/useAuth'
 
 /** Фиолетовый акцент в духе Twitch поверх пресета Aura. */
 const AppPreset = definePreset(Aura, {
@@ -35,21 +36,31 @@ const AppPreset = definePreset(Aura, {
 
 applyInitialTheme()
 
-createApp(App)
-  .use(router)
-  .use(PrimeVue, {
-    theme: {
-      preset: AppPreset,
-      options: {
-        darkModeSelector: '.p-dark',
-        cssLayer: false
-      }
-    },
-    ripple: true,
-    locale: ru
-  })
-  .use(ToastService)
-  .use(ConfirmationService)
-  .directive('tooltip', Tooltip)
-  .mount('#app')
+/**
+ * Сначала восстанавливаем сессию Supabase (если он настроен), потом монтируем
+ * приложение — так /admin сразу знает, вошёл ли владелец.
+ */
+async function bootstrap() {
+  await initAuth()
+
+  createApp(App)
+    .use(router)
+    .use(PrimeVue, {
+      theme: {
+        preset: AppPreset,
+        options: {
+          darkModeSelector: '.p-dark',
+          cssLayer: false
+        }
+      },
+      ripple: true,
+      locale: ru
+    })
+    .use(ToastService)
+    .use(ConfirmationService)
+    .directive('tooltip', Tooltip)
+    .mount('#app')
+}
+
+bootstrap()
 
