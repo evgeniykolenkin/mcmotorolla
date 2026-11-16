@@ -4,6 +4,8 @@
 с оценкой от 1 до 10 и заметками о прохождении. Читать может любой, редактировать — только владелец
 через скрытую страницу `/admin`.
 
+Код: [github.com/evgeniykolenkin/mcmotorolla](https://github.com/evgeniykolenkin/mcmotorolla) (MIT).
+
 ## Стек
 
 | Что | Версия |
@@ -75,24 +77,59 @@ src/
 - 5–6 — оранжевый («средне»)
 - 1–4 — красный («слабо»)
 
-## Деплой на Vercel
+## Репозиторий и автодеплой
 
-1. Импортировать репозиторий в Vercel (framework определится как Vite).
-2. Добавить переменные окружения (`VITE_OWNER_PASSWORD`, позже `VITE_SUPABASE_URL` и
-   `VITE_SUPABASE_ANON_KEY`) в Project Settings → Environment Variables.
-3. `vercel.json` уже содержит rewrite на `index.html`, чтобы прямые ссылки на `/game/...`
-   и `/admin` не отдавали 404.
+Репозиторий: <https://github.com/evgeniykolenkin/mcmotorolla> (public). Прод-ветка — `main`.
 
-После перехода на Supabase free-проект может засыпать после ~7 дней без запросов — нужен
-keep-alive пинг (этап 3).
+| Событие | Что происходит |
+| --- | --- |
+| push в `main` | Vercel пересобирает проект и обновляет прод |
+| push в другую ветку / PR | Vercel делает preview-деплой и присылает ссылку |
+| изменение env-переменных | применяется при следующем деплое |
+
+### Первый деплой на Vercel (один раз)
+
+1. [vercel.com](https://vercel.com) → **Add New → Project → Import Git Repository** →
+   `evgeniykolenkin/mcmotorolla`.
+2. Framework Preset: **Vite**. Build Command `npm run build`, Output Directory `dist` —
+   уже зафиксированы в `vercel.json`, менять не нужно.
+3. **Project Settings → Environment Variables** (добавить для Production и Preview):
+   - `VITE_OWNER_PASSWORD` — пароль владельца этапа 0;
+   - позже `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+4. Deploy. Прод-ссылку вида `https://<project>.vercel.app` добавить в этот README.
+5. Смоук-тест прода:
+   - `/` — 10 карточек, статистика, поиск и фильтры;
+   - прямой заход на `/game/elden-ring` — не 404 (работает SPA-rewrite);
+   - `/admin` — вход владельца, создание и удаление записи, перезагрузка страницы.
+
+### Рабочий цикл
+
+```bash
+git switch -c feat/название
+# правки
+git commit -am "feat: что сделано"
+git push -u origin feat/название
+# PR на GitHub → preview-ссылка от Vercel → merge в main → прод
+```
+
+- Откат: Vercel → **Deployments** → нужный деплой → ⋯ → **Promote to Production**
+  (или Instant Rollback).
+- Секреты живут только в Vercel (Project Settings → Environment Variables) и в локальном
+  `.env.local`; `.env*` в git не попадает, шаблон — `.env.example`.
+- Всё с префиксом `VITE_` попадает в клиентский бандл, поэтому пароль этапа 0 — заглушка,
+  а не защита. Настоящая авторизация — Supabase Auth (этап 2).
+- После перехода на Supabase free-проект может засыпать после ~7 дней без запросов — нужен
+  keep-alive пинг (этап 3).
 
 ## Дальше по плану
 
-1. Supabase: таблица `games`, RLS (`select` — всем, `insert/update/delete` — только админу),
+0. Git-репозиторий — готово: `main` → `origin/main`, 38 файлов на GitHub.
+1. Vercel: импорт проекта, переменные окружения, первый деплой и смоук-тест прода.
+2. Supabase: таблица `games`, RLS (`select` — всем, `insert/update/delete` — только админу),
    seed демо-данных, `supabaseGamesRepo.js`.
-2. Настоящая авторизация владельца (Supabase Auth), регистрация закрыта.
-3. Деплой и смоук-тест на проде.
+3. Настоящая авторизация владельца (Supabase Auth), регистрация закрыта.
 4. Бонусы: загрузка обложек в Storage, автозаполнение из IGDB, markdown в отзывах.
+
 
 ## Лицензия
 
