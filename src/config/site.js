@@ -16,13 +16,13 @@ export const site = {
 
 /**
  * Режим работы данных.
- * Этап 0 — данные лежат в localStorage браузера.
- * Этап 1 — Supabase, если в .env.local заданы VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY.
+ * Локальный режим — Supabase не настроен, записи лежат в localStorage браузера.
+ * Supabase — если в .env.local заданы VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY.
  */
-export const isDemoBackend = !isSupabaseConfigured
+export const isLocalBackend = !isSupabaseConfigured
 
 /** Email владельца для входа (Supabase Auth). Если пусто — поле показывается в форме. */
 export const ownerEmail = import.meta.env.VITE_OWNER_EMAIL ?? ''
 
-/** Пароль заглушки этапа 0 — используется только пока Supabase не настроен. */
-export const demoOwnerPassword = import.meta.env.VITE_OWNER_PASSWORD ?? 'admin'
+/** Пароль локального режима — используется только пока Supabase не настроен. */
+export const localOwnerPassword = import.meta.env.VITE_OWNER_PASSWORD ?? 'admin'

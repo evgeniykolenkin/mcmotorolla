@@ -1,13 +1,14 @@
 import { computed, ref } from 'vue'
-import { demoOwnerPassword, ownerEmail as defaultOwnerEmail } from '../config/site'
+import { localOwnerPassword, ownerEmail as defaultOwnerEmail } from '../config/site'
 import { isSupabaseConfigured, supabase } from '../services/supabaseClient'
 
 /**
  * Авторизация владельца.
  *
- * В режиме Supabase (этап 1) — настоящий вход через Supabase Auth:
+ * В режиме Supabase — настоящий вход через Supabase Auth:
  * email + пароль пользователя, созданного в Authentication → Users.
- * В локальном режиме (этап 0) — заглушка со сравнением пароля на клиенте.
+ * В локальном режиме — заглушка со сравнением пароля на клиенте
+ * (нужна только для разработки без Supabase).
  *
  * Интерфейс для компонентов один: isOwner / signIn / signOut.
  */
@@ -76,7 +77,7 @@ export function useAuth() {
       return { ok: true }
     }
 
-    if (String(password) === String(demoOwnerPassword)) {
+    if (String(password) === String(localOwnerPassword)) {
       try {
         localStorage.setItem(STORAGE_KEY, 'ok')
       } catch {

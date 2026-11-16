@@ -65,15 +65,29 @@ const tone = computed(() => ratingTone(rating.value))
 
 .rating-input__controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 18px;
+  gap: 12px 18px;
 }
 
 .rating-input__slider {
-  flex: 1;
+  flex: 1 1 200px;
+  min-width: 0;
 }
 
 .rating-input__number {
+  flex: 0 0 auto;
   width: 108px;
+}
+
+@media (max-width: 420px) {
+  .rating-input__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rating-input__number {
+    width: 100%;
+  }
 }
 </style>

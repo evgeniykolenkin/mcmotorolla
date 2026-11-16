@@ -14,9 +14,8 @@ import RatingBadge from '../components/RatingBadge.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { useAuth } from '../composables/useAuth'
 import { useGames } from '../composables/useGames'
-import { resetToDemo } from '../services/gamesRepository'
 import { formatDate, formatHours } from '../utils/format'
-import { isDemoBackend } from '../config/site'
+import { isLocalBackend } from '../config/site'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,11 +23,10 @@ const confirm = useConfirm()
 const toast = useToast()
 
 const { isOwner, signOut } = useAuth()
-const { allGames, loading, stats, ensureLoaded, refresh, deleteGame } = useGames()
+const { allGames, loading, stats, ensureLoaded, deleteGame } = useGames()
 
 const formVisible = ref(false)
 const editing = ref(null)
-const resetting = ref(false)
 
 const draftCount = computed(() => allGames.value.filter((game) => !game.published).length)
 
@@ -95,28 +93,6 @@ function askDelete(game) {
     }
   })
 }
-
-function askReset() {
-  confirm.require({
-    ...confirmAction,
-    header: 'Вернуть демо-данные?',
-    message: isDemoBackend
-      ? 'Все локальные изменения будут потеряны и вернутся 10 демо-игр.'
-      : 'В базу добавятся 10 демо-игр. Записи с теми же адресами (slug) будут перезаписаны.',
-    icon: 'pi pi-replay',
-    acceptProps: { label: 'Вернуть демо', severity: 'warn' },
-    accept: async () => {
-      resetting.value = true
-      try {
-        await resetToDemo()
-        await refresh()
-        toast.add({ severity: 'success', summary: 'Демо-данные восстановлены', life: 2600 })
-      } finally {
-        resetting.value = false
-      }
-    }
-  })
-}
 </script>
 
 <template>
@@ -134,15 +110,6 @@ function askReset() {
         <div v-if="isOwner" class="admin-head__actions">
           <Button label="Добавить игру" icon="pi pi-plus" @click="openCreate" />
           <Button
-            label="Демо-данные"
-            icon="pi pi-replay"
-            outlined
-            severity="secondary"
-            :loading="resetting"
-            v-tooltip.bottom="'Восстановить исходные 10 игр'"
-            @click="askReset"
-          />
-          <Button
             label="Выйти"
             icon="pi pi-sign-out"
             text
@@ -155,9 +122,10 @@ function askReset() {
       <LoginPanel v-if="!isOwner" @success="onLogin" />
 
       <template v-else>
-        <Message v-if="isDemoBackend" severity="secondary" :closable="false">
-          Этап 0: записи хранятся только в этом браузере (localStorage). Подключение Supabase —
-          следующий этап, после него дневник станет общим для всех.
+        <Message v-if="isLocalBackend" severity="secondary" :closable="false">
+          Локальный режим: записи хранятся только в этом браузере (localStorage) и не видны
+          посетителям. Задайте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY, чтобы включить
+          Supabase.
         </Message>
         <Message v-else severity="success" :closable="false">
           Записи хранятся в Supabase и сразу видны всем посетителям. Черновики видите только вы.

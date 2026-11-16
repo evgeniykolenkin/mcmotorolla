@@ -1,11 +1,26 @@
-import { demoGames } from '../data/demoGames'
 import { uniqueSlug } from '../utils/slugify'
 
 const STORAGE_KEY = 'mcmotorolla.games.v1'
 const LATENCY_MS = 160
 
 const wait = (ms = LATENCY_MS) => new Promise((resolve) => setTimeout(resolve, ms))
-const clone = (value) => JSON.parse(JSON.stringify(value))
+
+/** null/undefined → '', остальное — строка без пробелов по краям */
+function toText(value) {
+  return value === null || value === undefined ? '' : String(value).trim()
+}
+
+/** Год выпуска из Steam: 1950–2100, иначе null */
+function toYear(value) {
+  const year = Number(value)
+  return Number.isFinite(year) && year >= 1950 && year <= 2100 ? Math.trunc(year) : null
+}
+
+/** Steam appid: положительное целое, иначе null */
+function toAppId(value) {
+  const id = Number(value)
+  return Number.isFinite(id) && id > 0 ? Math.trunc(id) : null
+}
 
 function writeStore(list) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
@@ -19,35 +34,36 @@ function readStore() {
       if (Array.isArray(parsed)) return parsed
     }
   } catch {
-    /* битые данные — пересоздадим из демо-набора */
+    /* битые данные в localStorage — начинаем с пустого дневника */
   }
 
-  writeStore(demoGames)
-  return clone(demoGames)
+  return []
 }
 
 function normalize(payload, previous = {}, games) {
   const now = new Date().toISOString()
-  const title = String(payload.title ?? '').trim()
+  const title = toText(payload.title)
 
   return {
     id: previous.id ?? crypto.randomUUID(),
     title,
     // slug не меняем при редактировании — ссылки на игру остаются живыми
     slug: previous.slug ?? uniqueSlug(title, games),
-    coverUrl: String(payload.coverUrl ?? '').trim() || null,
+    coverUrl: toText(payload.coverUrl) || null,
     platform: payload.platform || 'ПК',
-    genre: String(payload.genre ?? '').trim(),
+    genre: toText(payload.genre),
     rating: Number(payload.rating),
     hours:
       payload.hours === null || payload.hours === '' || payload.hours === undefined
         ? null
         : Number(payload.hours),
     completedAt: payload.completedAt || new Date().toISOString().slice(0, 10),
-    verdict: String(payload.verdict ?? '').trim(),
-    review: String(payload.review ?? '').trim(),
+    verdict: toText(payload.verdict),
+    review: toText(payload.review),
     status: payload.status ?? 'completed',
     published: payload.published !== false,
+    releaseYear: toYear(payload.releaseYear),
+    steamAppId: toAppId(payload.steamAppId),
     createdAt: previous.createdAt ?? now,
     updatedAt: now
   }
@@ -88,11 +104,4 @@ export async function remove(id) {
   await wait()
   const games = readStore().filter((game) => game.id !== id)
   writeStore(games)
-}
-
-/** Сброс демо-данных (кнопка в админке, этап 0). */
-export async function resetToDemo() {
-  await wait()
-  writeStore(demoGames)
-  return clone(demoGames)
 }

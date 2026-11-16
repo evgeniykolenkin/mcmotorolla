@@ -50,7 +50,11 @@ const initials = computed(() =>
       <div class="detail__top">
         <div>
           <h1 class="detail__title">{{ game.title }}</h1>
-          <p v-if="game.genre" class="muted">{{ game.genre }}</p>
+          <p v-if="game.genre || game.releaseYear" class="muted">
+            <template v-if="game.genre">{{ game.genre }}</template>
+            <template v-if="game.genre && game.releaseYear"> · </template>
+            <template v-if="game.releaseYear">{{ game.releaseYear }}</template>
+          </p>
         </div>
 
         <div class="detail__actions" v-if="isOwner">

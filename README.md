@@ -54,11 +54,10 @@ cp .env.example .env.local   # Windows: Copy-Item .env.example .env.local
 | `VITE_SUPABASE_URL` | Project URL вида `https://<ref>.supabase.co` (без `/rest/v1/`) |
 | `VITE_SUPABASE_ANON_KEY` | publishable key `sb_publishable_...` (не `sb_secret_...`!) |
 | `VITE_OWNER_EMAIL` | email владельца; если пусто — поле email показывается в форме входа |
-| `VITE_OWNER_PASSWORD` | только для локального режима (заглушка этапа 0) |
+| `VITE_OWNER_PASSWORD` | только для локального режима (когда Supabase не настроен) |
 
 Компоненты общаются с данными только через фасад `src/services/gamesRepository.js`
-(`list / getBySlug / create / update / remove / resetToDemo`), поэтому не знают, откуда
-приходят записи.
+(`list / getBySlug / create / update / remove`), поэтому не знают, откуда приходят записи.
 
 ### Настройка Supabase (один раз)
 
@@ -66,12 +65,15 @@ cp .env.example .env.local   # Windows: Copy-Item .env.example .env.local
    в `.env.local` и в Vercel.
 2. **SQL Editor** → выполнить `supabase/0001_games.sql`: таблица `games`, индексы, триггер
    `updated_at`, RLS-политики и гранты. Скрипт идемпотентен, его можно запускать повторно.
+   Затем — `supabase/0002_game_meta.sql`: колонки `release_year` и `steam_app_id` под
+   автозаполнение из Steam (плюс разовая чистка старых пустых значений). Пока этот скрипт
+   не применён, приложение продолжает сохранять игры, но без года и appid.
 3. **Authentication → Users → Add user**: email владельца + пароль, включить
    **Auto Confirm User**.
 4. **Authentication → Sign In / Providers → Email**: выключить **Allow new users to sign up** —
    регистрация закрыта, пользователь только один.
-5. Проверка: `/admin` → вход по email и паролю → кнопка «Демо-данные» наполняет базу;
-   на главной появляются 10 игр.
+5. Проверка: `/admin` → вход по email и паролю → «Добавить игру» → начать вводить название,
+   выбрать подсказку Steam, сохранить. Запись появляется на главной.
 6. Проверка защиты (по желанию, из терминала): анонимный `GET /rest/v1/games` возвращает
    только опубликованные строки, а `POST` с publishable key — `401 permission denied`.
 
@@ -102,12 +104,12 @@ Publishable key публичный — доступ к строкам огран
   (письмо со ссылкой; встроенный SMTP free-тарифа ограничен по частоте) либо сброс через
   Admin API с secret key — только с локальной машины, ключ не попадает ни в Vercel, ни в бандл.
 
-## Локальный режим (этап 0)
+## Локальный режим (без Supabase)
 
 Если переменные Supabase пустые, данные лежат в `localStorage` браузера
-(`mcmotorolla.games.v1`), стартовый набор — 10 демо-игр из `src/data/demoGames.js`, вход —
-пароль из `VITE_OWNER_PASSWORD` (по умолчанию `admin`). Это **не безопасность**: пароль
-попадает в бандл. Режим нужен только для разработки интерфейса без бэкенда.
+(`mcmotorolla.games.v1`) и дневник стартует пустым — никаких демо-записей нет. Вход — пароль
+из `VITE_OWNER_PASSWORD` (по умолчанию `admin`). Это **не безопасность**: пароль попадает
+в бандл. Режим нужен только для разработки интерфейса без бэкенда.
 
 ## Структура
 
@@ -117,15 +119,17 @@ src/
                   RatingInput, GameFormDialog, GameDetail, LoginPanel, EmptyState
   composables/    useGames (состояние + фильтры), useAuth, useTheme
   config/         site.js — ник, ссылки, тексты
-  data/           demoGames.js — стартовый набор
   router/         маршруты и заголовки страниц
   services/       gamesRepository.js (фасад), supabaseGamesRepo.js, supabaseClient.js,
-                  localGamesRepo.js (localStorage)
+                  localGamesRepo.js (localStorage), steamClient.js (автозаполнение)
   styles/         base.css — токены, тёмная/светлая тема
   utils/          slugify, format (даты, оценки, цвета)
   views/          HomeView, GameView, AdminView, NotFoundView
+api/               _steamClient.js — клиент Steam Store API, steam.js — функция /api/steam
 .github/workflows/ supabase-keepalive.yml — ежедневный пинг, чтобы free-проект не засыпал
-supabase/         0001_games.sql — таблица games, RLS-политики, триггер updated_at
+supabase/          0001_games.sql — таблица games, RLS-политики, триггер updated_at;
+                   0002_game_meta.sql — колонки release_year и steam_app_id;
+                   cleanup_demo_games.sql — разовое удаление старого демо-набора
 ```
 
 ## Оценки
@@ -136,6 +140,23 @@ supabase/         0001_games.sql — таблица games, RLS-политики,
 - 7–8 — салатовый («хорошо»)
 - 5–6 — оранжевый («средне»)
 - 1–4 — красный («слабо»)
+
+## Автозаполнение из Steam
+
+Форма игры (`/admin` → «Добавить игру») ищет название в Steam и подставляет **только
+метаданные**: название, обложку 600×900, жанры и год выхода. Оценку, часы, вердикт и
+описание владелец пишет сам — тексты Steam в дневник не попадают.
+
+- Публичный Steam Store API не отдаёт CORS-заголовки, поэтому браузер ходит в свой прокси
+  `GET /api/steam?action=search|game` (`api/steam.js` + `api/_steamClient.js`), ключи не нужны.
+- В `npm run dev` Vercel-функций нет: тот же `/api/steam` обслуживает middleware
+  `steamDevApi` из `vite.config.js`, так что код Steam-клиента один.
+- Ответы кешируются: на CDN Vercel — неделя, в браузере — 10 минут (частые запросы к Steam
+  начинают отдавать пустые ответы).
+- Регион магазина в запросах — `cc=US` (в RU-каталоге нет части игр, например The Witcher 3),
+  язык — `l=russian`, поэтому названия и жанры русские.
+- Если Steam недоступен, форма остаётся рабочей: любое поле можно заполнить вручную.
+- Своя обложка заменяет steam-овскую, кнопка «Убрать» очищает ссылку.
 
 ## Репозиторий и автодеплой
 
@@ -162,7 +183,8 @@ supabase/         0001_games.sql — таблица games, RLS-политики,
 5. Смоук-тест прода:
    - `/` — карточки, статистика, поиск и фильтры;
    - прямой заход на `/game/elden-ring` — не 404 (работает SPA-rewrite);
-   - `/admin` — вход владельца, создание и удаление записи, перезагрузка страницы.
+   - `/admin` — вход владельца, создание и удаление записи, перезагрузка страницы;
+   - `/api/steam?action=search&q=Hades` — JSON с подсказками Steam (прокси-функция жива).
 
 ### Рабочий цикл
 
@@ -201,11 +223,13 @@ Free-проект Supabase засыпает после ~7 дней без зап
 
 0. Git-репозиторий — готово: `main` → `origin/main`.
 1. Vercel — готово: <https://mcmotorolla.vercel.app> (автодеплой из `main`).
-2. Supabase (этапы 1–2) — готово: `supabase/0001_games.sql` применён, переменные заданы
-   в Vercel, вход владельца, демо-данные и CRUD проверены на проде, запись анониму закрыта.
+2. Supabase — готово: `supabase/0001_games.sql` применён, переменные заданы в Vercel,
+   вход владельца и CRUD проверены на проде, запись анониму закрыта.
 3. Keep-alive для Supabase free-tier — готово: GitHub Actions-пинг раз в сутки.
-4. Бонусы: загрузка обложек в Storage, автозаполнение из IGDB, markdown в отзывах,
-   смена пароля из `/admin`.
+4. Автозаполнение из Steam — готово: прокси `/api/steam`, подсказки названий, обложка,
+   жанр и год (`supabase/0002_game_meta.sql`).
+5. Бонусы: загрузка обложек в Supabase Storage, markdown в отзывах, смена пароля из
+   `/admin`, ссылка на страницу игры в Steam.
 
 
 ## Лицензия

@@ -1,14 +1,45 @@
-import { demoGames } from '../data/demoGames'
 import { uniqueSlug } from '../utils/slugify'
 import { supabase } from './supabaseClient'
 
 const TABLE = 'games'
 
 /**
- * ЭТАП 1: игры хранятся в Postgres (Supabase).
+ * Игры хранятся в Postgres (Supabase).
  * Набор методов и форма объектов — те же, что у localGamesRepo,
  * поэтому компоненты не знают, откуда пришли данные.
  */
+
+/** null/undefined → '', остальное — строка без пробелов по краям */
+function toText(value) {
+  return value === null || value === undefined ? '' : String(value).trim()
+}
+
+/** Год выпуска из Steam: 1950–2100, иначе null */
+function toYear(value) {
+  const year = Number(value)
+  return Number.isFinite(year) && year >= 1950 && year <= 2100 ? Math.trunc(year) : null
+}
+
+/** Steam appid: положительное целое, иначе null */
+function toAppId(value) {
+  const id = Number(value)
+  return Number.isFinite(id) && id > 0 ? Math.trunc(id) : null
+}
+
+/**
+ * Миграция 0002 может быть ещё не применена (колонок release_year и steam_app_id нет).
+ * Тогда повторяем запись без метаданных Steam, чтобы не блокировать сохранение игры.
+ */
+function isMissingColumn(error) {
+  return /column .* does not exist/i.test(String(error?.message ?? ''))
+}
+
+function withoutMetaColumns(row) {
+  const copy = { ...row }
+  delete copy.release_year
+  delete copy.steam_app_id
+  return copy
+}
 
 /** snake_case из БД → camelCase приложения */
 function rowToGame(row) {
@@ -26,6 +57,8 @@ function rowToGame(row) {
     review: row.review,
     status: row.status,
     published: row.published,
+    releaseYear: toYear(row.release_year),
+    steamAppId: toAppId(row.steam_app_id),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -35,10 +68,10 @@ function rowToGame(row) {
 function payloadToRow(payload) {
   const row = {}
 
-  if (payload.title !== undefined) row.title = String(payload.title).trim()
-  if (payload.coverUrl !== undefined) row.cover_url = String(payload.coverUrl).trim() || null
+  if (payload.title !== undefined) row.title = toText(payload.title)
+  if (payload.coverUrl !== undefined) row.cover_url = toText(payload.coverUrl) || null
   if (payload.platform !== undefined) row.platform = payload.platform || 'ПК'
-  if (payload.genre !== undefined) row.genre = String(payload.genre).trim()
+  if (payload.genre !== undefined) row.genre = toText(payload.genre)
   if (payload.rating !== undefined) row.rating = Number(payload.rating)
   if (payload.hours !== undefined) {
     row.hours =
@@ -47,10 +80,12 @@ function payloadToRow(payload) {
   if (payload.completedAt !== undefined) {
     row.completed_at = payload.completedAt || new Date().toISOString().slice(0, 10)
   }
-  if (payload.verdict !== undefined) row.verdict = String(payload.verdict).trim()
-  if (payload.review !== undefined) row.review = String(payload.review).trim()
+  if (payload.verdict !== undefined) row.verdict = toText(payload.verdict)
+  if (payload.review !== undefined) row.review = toText(payload.review)
   if (payload.status !== undefined) row.status = payload.status
   if (payload.published !== undefined) row.published = payload.published !== false
+  if (payload.releaseYear !== undefined) row.release_year = toYear(payload.releaseYear)
+  if (payload.steamAppId !== undefined) row.steam_app_id = toAppId(payload.steamAppId)
 
   return row
 }
@@ -69,6 +104,11 @@ function toError(error) {
   }
   if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
     return new Error('Нет связи с Supabase — проверьте интернет')
+  }
+  if (/column .* does not exist/i.test(message)) {
+    return new Error(
+      'В Supabase не выполнена миграция полей — запустите supabase/0002_game_meta.sql'
+    )
   }
 
   return new Error(message || 'Ошибка Supabase')
@@ -105,25 +145,34 @@ export async function create(payload) {
   const row = payloadToRow(payload)
   row.slug = await nextSlug(row.title)
 
-  const { data, error } = await supabase.from(TABLE).insert(row).select().single()
-  if (error) throw toError(error)
-  return rowToGame(data)
+  let result = await supabase.from(TABLE).insert(row).select().single()
+
+  if (result.error && isMissingColumn(result.error)) {
+    result = await supabase.from(TABLE).insert(withoutMetaColumns(row)).select().single()
+  }
+
+  if (result.error) throw toError(result.error)
+  return rowToGame(result.data)
 }
 
 export async function update(id, payload) {
   // slug при редактировании не меняем — ссылки на игру остаются живыми
   const row = payloadToRow(payload)
 
-  const { data, error } = await supabase
-    .from(TABLE)
-    .update(row)
-    .eq('id', id)
-    .select()
-    .maybeSingle()
+  let result = await supabase.from(TABLE).update(row).eq('id', id).select().maybeSingle()
 
-  if (error) throw toError(error)
-  if (!data) throw new Error('Игра не найдена или нет прав на изменение')
-  return rowToGame(data)
+  if (result.error && isMissingColumn(result.error)) {
+    result = await supabase
+      .from(TABLE)
+      .update(withoutMetaColumns(row))
+      .eq('id', id)
+      .select()
+      .maybeSingle()
+  }
+
+  if (result.error) throw toError(result.error)
+  if (!result.data) throw new Error('Игра не найдена или нет прав на изменение')
+  return rowToGame(result.data)
 }
 
 export async function remove(id) {
@@ -131,21 +180,4 @@ export async function remove(id) {
 
   if (error) throw toError(error)
   if (!data?.length) throw new Error('Игра не найдена или нет прав на удаление')
-}
-
-/**
- * «Вернуть демо-данные» в режиме Supabase: upsert 10 игр по slug
- * от имени вошедшего владельца (owner_id подставит default auth.uid()).
- */
-export async function resetToDemo() {
-  const rows = demoGames.map((game) => ({
-    ...payloadToRow(game),
-    slug: game.slug,
-    completed_at: game.completedAt
-  }))
-
-  const { error } = await supabase.from(TABLE).upsert(rows, { onConflict: 'slug' })
-  if (error) throw toError(error)
-
-  return list()
 }

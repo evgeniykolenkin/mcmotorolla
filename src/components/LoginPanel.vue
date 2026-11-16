@@ -5,7 +5,7 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Message from 'primevue/message'
 import { useAuth } from '../composables/useAuth'
-import { isDemoBackend, ownerEmail } from '../config/site'
+import { isLocalBackend, ownerEmail } from '../config/site'
 
 const emit = defineEmits(['success'])
 const { signIn } = useAuth()
@@ -16,7 +16,7 @@ const error = ref('')
 const submitting = ref(false)
 
 // В режиме Supabase email нужен для входа; если он задан в .env.local — прячем поле
-const showEmail = computed(() => !isDemoBackend && !ownerEmail)
+const showEmail = computed(() => !isLocalBackend && !ownerEmail)
 
 async function submit() {
   submitting.value = true
@@ -83,9 +83,10 @@ async function submit() {
         :disabled="!password || (showEmail && !email)"
       />
 
-      <Message v-if="isDemoBackend" severity="secondary" :closable="false" size="small">
-        Демо-режим этапа 0: пароль по умолчанию «admin», меняется в
-        <code>.env.local</code> (VITE_OWNER_PASSWORD).
+      <Message v-if="isLocalBackend" severity="secondary" :closable="false" size="small">
+        Локальный режим: Supabase не настроен, записи сохраняются только в этом браузере.
+        Пароль по умолчанию «admin», меняется в <code>.env.local</code>
+        (VITE_OWNER_PASSWORD).
       </Message>
     </form>
   </div>

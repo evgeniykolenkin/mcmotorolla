@@ -44,6 +44,7 @@ const initials = computed(() =>
       <p class="game-card__verdict muted">{{ game.verdict || game.genre }}</p>
       <div class="game-card__meta muted">
         <span>{{ game.platform }}</span>
+        <span v-if="game.releaseYear">· {{ game.releaseYear }}</span>
         <span v-if="game.hours">· {{ formatHours(game.hours) }}</span>
         <span>· {{ formatDate(game.completedAt) }}</span>
       </div>
