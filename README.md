@@ -38,7 +38,7 @@ npm run preview   # локальный просмотр сборки
 | `/admin` | вход владельца и CRUD-панель (для остальных — просто форма входа) |
 | `*` | страница 404 |
 
-## Данные и авторизация (этап 1: Supabase)
+## Данные и авторизация (Supabase)
 
 Игры хранятся в Postgres (Supabase), вход владельца — Supabase Auth (email + пароль).
 Режим выбирается автоматически: если в `.env.local` заполнены `VITE_SUPABASE_URL` и
@@ -70,7 +70,10 @@ cp .env.example .env.local   # Windows: Copy-Item .env.example .env.local
    **Auto Confirm User**.
 4. **Authentication → Sign In / Providers → Email**: выключить **Allow new users to sign up** —
    регистрация закрыта, пользователь только один.
-5. Проверка: `/admin` → вход по email и паролю → кнопка «Демо-данные» наполняет базу.
+5. Проверка: `/admin` → вход по email и паролю → кнопка «Демо-данные» наполняет базу;
+   на главной появляются 10 игр.
+6. Проверка защиты (по желанию, из терминала): анонимный `GET /rest/v1/games` возвращает
+   только опубликованные строки, а `POST` с publishable key — `401 permission denied`.
 
 ### Что защищено и как
 
@@ -82,6 +85,22 @@ cp .env.example .env.local   # Windows: Copy-Item .env.example .env.local
 
 Publishable key публичный — доступ к строкам ограничивает база через RLS. Secret key
 (`sb_secret_...` / `service_role`) в браузерном коде не используется никогда.
+
+## Доступ владельца
+
+Владелец в проекте один: каждая запись привязана к `owner_id`, поэтому второй аккаунт
+не увидит и не сможет править игры первого. Регистрация закрыта (`disable_signup`),
+пароль знает только владелец.
+
+- Пароль не хранится в открытом виде: Supabase держит bcrypt-хэш
+  (`auth.users.encrypted_password`). Посмотреть пароль нельзя ни в Dashboard, ни через API.
+- Практика: пароль лежит в менеджере паролей (Bitwarden, 1Password, браузер), а другу
+  передаётся личным каналом, не в общем чате.
+- Смена пароля из интерфейса `/admin` намеренно не сделана — при необходимости добавляется
+  через `supabase.auth.updateUser({ password })`.
+- Если пароль забыт или скомпрометирован: **Authentication → Users → ⋯ → Reset password**
+  (письмо со ссылкой; встроенный SMTP free-тарифа ограничен по частоте) либо сброс через
+  Admin API с secret key — только с локальной машины, ключ не попадает ни в Vercel, ни в бандл.
 
 ## Локальный режим (этап 0)
 
@@ -105,6 +124,7 @@ src/
   styles/         base.css — токены, тёмная/светлая тема
   utils/          slugify, format (даты, оценки, цвета)
   views/          HomeView, GameView, AdminView, NotFoundView
+.github/workflows/ supabase-keepalive.yml — ежедневный пинг, чтобы free-проект не засыпал
 supabase/         0001_games.sql — таблица games, RLS-политики, триггер updated_at
 ```
 
@@ -161,19 +181,31 @@ git push -u origin feat/название
 - Всё с префиксом `VITE_` попадает в клиентский бандл. Publishable key Supabase к этому
   готов по дизайну (доступ ограничивает RLS), а вот `VITE_OWNER_PASSWORD` — заглушка
   локального режима, а не защита.
-- После перехода на Supabase free-проект может засыпать после ~7 дней без запросов — нужен
-  keep-alive пинг (этап 3).
+- Free-проект Supabase засыпает после ~7 дней без запросов — его будит workflow
+  `.github/workflows/supabase-keepalive.yml` (см. ниже).
+
+## Keep-alive Supabase
+
+Free-проект Supabase засыпает после ~7 дней без запросов, и первый визит пользователя
+ждёт холодный старт. Workflow `.github/workflows/supabase-keepalive.yml` раз в сутки
+(04:17 UTC) делает `GET /rest/v1/games?select=id&limit=1` и падает, если ответ не `200`, —
+так сбой виден в GitHub Actions.
+
+- Ручной запуск: **Actions → Supabase keep-alive → Run workflow**.
+- URL и publishable key зашиты как значения по умолчанию (они публичны и всё равно попадают
+  в бандл); при желании переопределяются repository variable `SUPABASE_URL` и
+  secret `SUPABASE_ANON_KEY` без правки файла.
+- Расписание GitHub может задерживать запуск на несколько минут — для keep-alive это не важно.
 
 ## Дальше по плану
 
 0. Git-репозиторий — готово: `main` → `origin/main`.
 1. Vercel — готово: <https://mcmotorolla.vercel.app> (автодеплой из `main`).
-2. Supabase (этап 1) — код готов: таблица + RLS в `supabase/0001_games.sql`,
-   `supabaseGamesRepo.js`, вход через Supabase Auth, регистрация закрыта.
-   Осталось применить SQL в проекте и добавить переменные в Vercel.
-3. Keep-alive для Supabase free-tier: GitHub Actions-пинг раз в пару дней, чтобы проект
-   не засыпал после ~7 дней простоя.
-4. Бонусы: загрузка обложек в Storage, автозаполнение из IGDB, markdown в отзывах.
+2. Supabase (этапы 1–2) — готово: `supabase/0001_games.sql` применён, переменные заданы
+   в Vercel, вход владельца, демо-данные и CRUD проверены на проде, запись анониму закрыта.
+3. Keep-alive для Supabase free-tier — готово: GitHub Actions-пинг раз в сутки.
+4. Бонусы: загрузка обложек в Storage, автозаполнение из IGDB, markdown в отзывах,
+   смена пароля из `/admin`.
 
 
 ## Лицензия

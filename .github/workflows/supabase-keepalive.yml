@@ -1,0 +1,43 @@
+name: Supabase keep-alive
+
+# Free-проект Supabase засыпает после ~7 дней без запросов.
+# Этот пинг раз в сутки держит его активным.
+on:
+  schedule:
+    # 04:17 UTC каждый день (расписание GitHub может сдвигаться на несколько минут)
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping Supabase REST API
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Значения по умолчанию — публичные (URL проекта и publishable key и так попадают
+      # в клиентский бандл). Можно переопределить через Repository variables/secrets:
+      # vars.SUPABASE_URL и secrets.SUPABASE_ANON_KEY.
+      SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://cddmtxxtnzrzvgrjalhw.supabase.co' }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_9xzR7wH2my_ZPLwDD6iiCA_ol-K4E2w' }}
+    steps:
+      - name: Request games endpoint
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --max-time 20 \
+            --header "apikey: ${SUPABASE_ANON_KEY}" \
+            --header "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/games?select=id&limit=1")
+          echo "HTTP ${status}"
+          if [ "${status}" != "200" ]; then
+            echo "::error::Supabase keep-alive failed with HTTP ${status}"
+            exit 1
+          fi
+          echo "Supabase project is awake."
