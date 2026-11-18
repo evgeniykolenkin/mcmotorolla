@@ -165,6 +165,84 @@ p {
   user-select: none;
 }
 
+/* ------------------------------ markdown ------------------------------ */
+
+/* Отзыв «Как проходил»: на странице игры и в предпросмотре формы */
+.markdown-body {
+  line-height: 1.75;
+}
+
+.markdown-body > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body p {
+  margin: 0 0 12px;
+}
+
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5 {
+  margin: 20px 0 8px;
+  font-size: 1.05rem;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.markdown-body li {
+  margin-bottom: 4px;
+}
+
+.markdown-body blockquote {
+  margin: 0 0 12px;
+  padding: 8px 14px;
+  border-left: 3px solid var(--app-accent);
+  border-radius: 0 10px 10px 0;
+  background: var(--app-accent-soft);
+  color: var(--app-text-muted);
+}
+
+.markdown-body code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--app-surface-2);
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.88em;
+}
+
+.markdown-body pre {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-radius: 12px;
+  background: var(--app-surface-2);
+}
+
+.markdown-body pre code {
+  padding: 0;
+  background: none;
+}
+
+.markdown-body a {
+  color: var(--app-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-body hr {
+  margin: 18px 0;
+  border: 0;
+  border-top: 1px solid var(--app-border);
+}
+
 /* ------------------------------ адаптив ------------------------------ */
 
 @media (max-width: 640px) {

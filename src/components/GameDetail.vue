@@ -3,8 +3,9 @@ import { computed } from 'vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import RatingBadge from './RatingBadge.vue'
+import MarkdownText from './MarkdownText.vue'
 import { useAuth } from '../composables/useAuth'
-import { formatDate, formatHours, ratingTone, toParagraphs } from '../utils/format'
+import { formatDate, formatHours, ratingTone } from '../utils/format'
 
 const props = defineProps({
   game: { type: Object, required: true }
@@ -14,7 +15,6 @@ const emit = defineEmits(['edit', 'delete'])
 const { isOwner } = useAuth()
 
 const tone = computed(() => ratingTone(props.game.rating))
-const paragraphs = computed(() => toParagraphs(props.game.review))
 const statusLabel = computed(
   () =>
     ({ completed: 'Пройдена', dropped: 'Брошена', playing: 'Прохожу сейчас' })[props.game.status] ??
@@ -98,9 +98,7 @@ const initials = computed(() =>
         {{ game.verdict }}
       </blockquote>
 
-      <div v-if="paragraphs.length" class="detail__review">
-        <p v-for="(paragraph, index) in paragraphs" :key="index">{{ paragraph }}</p>
-      </div>
+      <MarkdownText v-if="game.review" class="detail__review" :text="game.review || ''" />
       <p v-else class="muted">Описание прохождения пока не заполнено.</p>
     </div>
   </article>
@@ -197,16 +195,8 @@ const initials = computed(() =>
 }
 
 .detail__review {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
   font-size: 1rem;
-  line-height: 1.75;
   max-width: 72ch;
-}
-
-.detail__review p {
-  margin: 0;
 }
 
 @media (max-width: 820px) {

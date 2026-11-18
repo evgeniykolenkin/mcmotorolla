@@ -11,6 +11,7 @@ import DatePicker from 'primevue/datepicker'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
 import RatingInput from './RatingInput.vue'
+import MarkdownText from './MarkdownText.vue'
 import { useGames } from '../composables/useGames'
 import { getSteamGame, searchSteamGames } from '../services/steamClient'
 import { fromIsoDate, toIsoDate } from '../utils/format'
@@ -59,6 +60,20 @@ const emptyForm = () => ({
 const form = reactive(emptyForm())
 const saving = ref(false)
 const errors = reactive({ title: '', rating: '', releaseYear: '', general: '' })
+
+// --- Markdown в поле «Как проходил» -----------------------------------------
+const mdMode = ref('edit')
+const mdHelpOpen = ref(false)
+const MD_HELP = [
+  { syntax: '**жирный**', result: 'жирный' },
+  { syntax: '*курсив*', result: 'курсив' },
+  { syntax: '## Подзаголовок', result: 'подзаголовок' },
+  { syntax: '- пункт', result: 'список' },
+  { syntax: '1. пункт', result: 'нумерованный список' },
+  { syntax: '> цитата', result: 'цитата' },
+  { syntax: '[текст](https://…)', result: 'ссылка' },
+  { syntax: '---', result: 'разделитель' }
+]
 
 /** AutoComplete при выборе опции отдаёт объект — приводим к строке названия. */
 const titleModel = computed({
@@ -155,6 +170,8 @@ function fillForm() {
   steamError.value = ''
   coverFailed.value = false
   lastQuery = ''
+  mdMode.value = 'edit'
+  mdHelpOpen.value = false
 
   if (!props.game) {
     Object.assign(form, emptyForm())
@@ -163,6 +180,8 @@ function fillForm() {
 
   Object.assign(form, {
     ...props.game,
+    verdict: props.game.verdict ?? '',
+    review: props.game.review ?? '',
     hours: props.game.hours ?? null,
     coverUrl: props.game.coverUrl && props.game.coverUrl !== 'null' ? props.game.coverUrl : '',
     releaseYear: props.game.releaseYear ?? null,
@@ -400,15 +419,69 @@ async function submit() {
       </div>
 
       <div class="field field--full">
-        <label for="game-review">Как проходил</label>
+        <div class="review-head">
+          <label for="game-review">Как проходил</label>
+          <div class="review-head__tools">
+            <button
+              type="button"
+              class="md-help__toggle"
+              :aria-expanded="mdHelpOpen"
+              aria-controls="md-help"
+              aria-label="Как оформить текст"
+              v-tooltip.top="'Как оформить текст'"
+              @click="mdHelpOpen = !mdHelpOpen"
+            >
+              ?
+            </button>
+            <span class="review-tabs">
+              <button
+                type="button"
+                :class="{ 'is-active': mdMode === 'edit' }"
+                @click="mdMode = 'edit'"
+              >
+                Текст
+              </button>
+              <button
+                type="button"
+                :class="{ 'is-active': mdMode === 'preview' }"
+                @click="mdMode = 'preview'"
+              >
+                Предпросмотр
+              </button>
+            </span>
+          </div>
+        </div>
+
+        <div v-if="mdHelpOpen" id="md-help" class="md-help">
+          <p class="md-help__intro muted">
+            Markdown — простые символы для оформления. Пустая строка = новый абзац.
+          </p>
+          <ul class="md-help__list">
+            <li v-for="item in MD_HELP" :key="item.syntax">
+              <code>{{ item.syntax }}</code>
+              <span class="muted">{{ item.result }}</span>
+            </li>
+          </ul>
+        </div>
+
         <Textarea
+          v-if="mdMode === 'edit'"
           id="game-review"
           v-model="form.review"
-          rows="7"
+          rows="8"
           auto-resize
-          placeholder="Свободный текст. Пустая строка между блоками = новый абзац."
+          placeholder="**Итог:** коротко о впечатлениях.&#10;&#10;## Что понравилось&#10;- …"
           fluid
         />
+        <div v-else class="review-preview">
+          <MarkdownText v-if="form.review.trim()" :text="form.review" />
+          <p v-else class="muted">Пока пусто — напишите текст во вкладке «Текст».</p>
+        </div>
+
+        <small class="field__hint muted">
+          Поддерживается markdown: **жирный**, *курсив*, списки, ## подзаголовки, &gt; цитаты и
+          ссылки. Кнопка «?» — шпаргалка, «Предпросмотр» покажет результат.
+        </small>
       </div>
 
       <div class="field field--full switch-row">
@@ -488,6 +561,112 @@ async function submit() {
 
 .field__hint a {
   color: var(--app-accent);
+}
+
+/* --- Markdown в «Как проходил» -------------------------------------------- */
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.review-head__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.md-help__toggle {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-2);
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.md-help__toggle:hover {
+  color: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.review-tabs {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--app-surface-2);
+}
+
+.review-tabs button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--app-text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.review-tabs button.is-active {
+  background: var(--app-surface);
+  color: var(--app-text);
+}
+
+.md-help {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-2);
+}
+
+.md-help__intro {
+  font-size: 0.78rem;
+}
+
+.md-help__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+}
+
+.md-help__list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.md-help__list code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--app-surface);
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  white-space: nowrap;
+}
+
+.review-preview {
+  min-height: 120px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--app-border);
+  background: var(--app-surface-2);
 }
 
 /* --- Подсказки Steam ------------------------------------------------------ */

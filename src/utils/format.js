@@ -43,14 +43,6 @@ export function ratingTone(rating = 0) {
   return { tone: 'bad', label: RATING_LABELS[value] ?? 'Слабо' }
 }
 
-/** Многострочный текст → массив абзацев (для аккуратного рендера отзыва). */
-export function toParagraphs(text = '') {
-  return String(text)
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-}
-
 /** Date → 'YYYY-MM-DD' (локальная дата, без сдвигов часового пояса). */
 export function toIsoDate(value) {
   const date = value instanceof Date ? value : new Date(value)
