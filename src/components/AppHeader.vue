@@ -1,48 +1,80 @@
 <script setup>
-import { computed } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import { site, socials } from '../config/site'
+import BrandAvatar from './BrandAvatar.vue'
+import EditableText from './EditableText.vue'
+import ImageEditDialog from './ImageEditDialog.vue'
+import { socials } from '../config/site'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
+import { useSiteContent } from '../composables/useSiteContent'
 
-const route = useRoute()
 const router = useRouter()
 const { isOwner } = useAuth()
 const { isDark, toggleTheme } = useTheme()
+const { content, ensureLoaded } = useSiteContent()
 
+// Дефолты видны сразу, сохранённые тексты подставятся после ответа базы
+ensureLoaded()
+
+const avatarVisible = ref(false)
 const themeIcon = computed(() => (isDark.value ? 'pi pi-sun' : 'pi pi-moon'))
 const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : 'Тёмная тема'))
-const isAdminPage = computed(() => route.name === 'admin')
-
-function openCreate() {
-  router.push({ name: 'admin', query: { create: '1' } })
-}
 </script>
 
 <template>
   <header class="app-header">
     <div class="container header-inner">
-      <RouterLink :to="{ name: 'home' }" class="brand">
-        <span class="brand__logo">MC</span>
-        <span class="brand__text">
-          <strong>{{ site.nickname }}</strong>
-          <small class="muted">{{ site.tagline }}</small>
-        </span>
-      </RouterLink>
+      <div class="brand-wrap">
+        <RouterLink :to="{ name: 'home' }" class="brand" aria-label="На главную">
+          <BrandAvatar :src="content.brand.avatarUrl" :alt="content.brand.nickname" />
+        </RouterLink>
+
+        <div class="brand__text">
+          <EditableText
+            tag="strong"
+            model-key="brand.nickname"
+            label="Ник в шапке"
+            :maxlength="40"
+          />
+          <EditableText
+            tag="small"
+            model-key="brand.tagline"
+            label="Подпись в шапке"
+            class="muted"
+            :maxlength="60"
+          />
+        </div>
+
+        <button
+          v-if="isOwner"
+          type="button"
+          class="brand-wrap__edit"
+          aria-label="Изменить аватарку"
+          v-tooltip.bottom="'Изменить аватарку'"
+          @click="avatarVisible = true"
+        >
+          <i class="pi pi-camera" />
+        </button>
+      </div>
+
+      <ImageEditDialog
+        v-if="isOwner"
+        v-model="avatarVisible"
+        model-key="brand.avatarUrl"
+        title="Аватарка в шапке"
+        hint="Квадратная картинка, лучше от 512×512. Файл сжимается в браузере до 512 px (WebP)."
+        folder="avatar"
+        :max-width="512"
+        :max-height="512"
+        shape="circle"
+      />
 
       <nav class="nav">
         <RouterLink :to="{ name: 'home' }" class="nav__link">
           <i class="pi pi-star-fill" /> <span class="nav__link-text">Игры</span>
         </RouterLink>
-
-        <Button
-          v-if="isOwner && !isAdminPage"
-          label="Добавить"
-          icon="pi pi-plus"
-          size="small"
-          @click="openCreate"
-        />
 
         <a
           v-for="social in socials"
@@ -109,26 +141,41 @@ function openCreate() {
   min-height: 68px;
 }
 
-.brand {
+.brand-wrap {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
+  --avatar-size: 40px;
 }
 
-.brand__logo {
+.brand {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.brand-wrap__edit {
+  position: absolute;
+  left: 24px;
+  bottom: -4px;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 13px;
-  background: linear-gradient(135deg, #9146ff, #25c8ff);
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.9rem;
-  letter-spacing: 0.04em;
-  box-shadow: 0 8px 20px -12px rgba(145, 70, 255, 0.9);
-  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text-muted);
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.brand-wrap__edit:hover {
+  color: var(--app-accent);
+  border-color: var(--app-accent);
 }
 
 .brand__text {
@@ -139,14 +186,37 @@ function openCreate() {
 }
 
 .brand__text strong {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   font-size: 1rem;
 }
 
-.brand__text small {
-  font-size: 0.75rem;
-  white-space: nowrap;
+.brand__text strong :deep(.editable-text__value) {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand__text strong :deep(.editable-text__pencil) {
+  flex: 0 0 auto;
+}
+
+.brand__text small {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: 0.75rem;
+}
+
+.brand__text small :deep(.editable-text__value) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand__text small :deep(.editable-text__pencil) {
+  flex: 0 0 auto;
 }
 
 .nav {
@@ -207,11 +277,15 @@ function openCreate() {
     min-height: 60px;
   }
 
-  .brand__logo {
-    width: 34px;
-    height: 34px;
-    font-size: 0.8rem;
-    border-radius: 11px;
+  .brand-wrap {
+    --avatar-size: 34px;
+  }
+
+  .brand-wrap__edit {
+    left: 20px;
+    width: 18px;
+    height: 18px;
+    font-size: 0.55rem;
   }
 
   .brand__text strong {
