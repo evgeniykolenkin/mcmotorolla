@@ -126,10 +126,6 @@ function stopTitleWidthTracking() {
 
 onBeforeUnmount(stopTitleWidthTracking)
 
-const steamStoreUrl = computed(() =>
-  form.steamAppId ? `https://store.steampowered.com/app/${form.steamAppId}/` : ''
-)
-
 const isEdit = computed(() => Boolean(props.game?.id))
 const dialogHeader = computed(() => (isEdit.value ? 'Редактировать игру' : 'Новая игра'))
 
@@ -280,6 +276,7 @@ async function submit() {
     :header="dialogHeader"
     modal
     :draggable="false"
+    :dismissable-mask="!saving"
     :style="{ width: 'min(720px, 94vw)' }"
     @show="startTitleWidthTracking"
     @hide="stopTitleWidthTracking"
@@ -363,9 +360,6 @@ async function submit() {
           fluid
         />
         <small v-if="errors.releaseYear" class="field__error">{{ errors.releaseYear }}</small>
-        <small v-else-if="steamStoreUrl" class="field__hint muted">
-          <a :href="steamStoreUrl" target="_blank" rel="noopener">Открыть в Steam</a>
-        </small>
       </div>
 
       <div class="field">
@@ -594,10 +588,6 @@ async function submit() {
 .field__hint {
   font-size: 0.76rem;
   line-height: 1.35;
-}
-
-.field__hint a {
-  color: var(--app-accent);
 }
 
 /* --- Markdown в «Как проходил» -------------------------------------------- */

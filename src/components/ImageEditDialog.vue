@@ -139,6 +139,7 @@ function clearImage() {
     :header="title"
     modal
     :draggable="false"
+    :dismissable-mask="!busyAll"
     class="image-edit-dialog"
     :style="{ width: 'min(560px, 94vw)' }"
   >

@@ -30,6 +30,10 @@ const initials = computed(() =>
     .join('')
     .toUpperCase()
 )
+// Ссылка на магазин есть только у записей, сохранённых с подсказкой Steam
+const steamUrl = computed(() =>
+  props.game.steamAppId ? `https://store.steampowered.com/app/${props.game.steamAppId}/` : ''
+)
 </script>
 
 <template>
@@ -49,7 +53,20 @@ const initials = computed(() =>
     <div class="detail__content">
       <div class="detail__top">
         <div>
-          <h1 class="detail__title">{{ game.title }}</h1>
+          <div class="detail__headline">
+            <h1 class="detail__title">{{ game.title }}</h1>
+            <a
+              v-if="steamUrl"
+              class="detail__steam"
+              :href="steamUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Страница игры в Steam"
+            >
+              <i class="pi pi-external-link" />
+              <span>Steam</span>
+            </a>
+          </div>
           <p v-if="game.genre || game.releaseYear" class="muted">
             <template v-if="game.genre">{{ game.genre }}</template>
             <template v-if="game.genre && game.releaseYear"> · </template>
@@ -146,9 +163,41 @@ const initials = computed(() =>
   align-items: flex-start;
 }
 
+.detail__headline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
 .detail__title {
   font-size: clamp(1.7rem, 3vw, 2.4rem);
-  margin-bottom: 4px;
+}
+
+/* Ссылка на Steam — рядом с названием, тихая пилюля, чтобы не спорить с заголовком */
+.detail__steam {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.detail__steam i {
+  font-size: 0.72rem;
+}
+
+.detail__steam:hover {
+  color: var(--app-accent);
+  border-color: var(--app-accent);
 }
 
 .detail__actions {
