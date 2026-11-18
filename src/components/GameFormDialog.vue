@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import AutoComplete from 'primevue/autocomplete'
@@ -91,6 +91,40 @@ const coverFailed = ref(false)
 let searchController = null
 let detailsController = null
 let lastQuery = ''
+
+/**
+ * Панель подсказок рендерится в body, и без ограничения её ширину диктуют
+ * длинные названия игр — она растягивается на весь экран. Поэтому меряем
+ * ширину поля и отдаём её в overlayStyle: панель = инпут.
+ */
+const titleField = ref(null)
+const titleOverlayStyle = ref({})
+let titleWidthObserver = null
+
+function measureTitleWidth() {
+  // clientWidth — ширина раскладки: не зависит от анимации scale при открытии
+  const width = titleField.value?.clientWidth ?? 0
+  if (width > 0) titleOverlayStyle.value = { width: `${width}px` }
+}
+
+/** Диалог монтирует содержимое при открытии — измеряем после отрисовки. */
+function startTitleWidthTracking() {
+  nextTick(() => {
+    measureTitleWidth()
+
+    if (titleWidthObserver || !titleField.value || typeof ResizeObserver === 'undefined') return
+
+    titleWidthObserver = new ResizeObserver(measureTitleWidth)
+    titleWidthObserver.observe(titleField.value)
+  })
+}
+
+function stopTitleWidthTracking() {
+  titleWidthObserver?.disconnect()
+  titleWidthObserver = null
+}
+
+onBeforeUnmount(stopTitleWidthTracking)
 
 const steamStoreUrl = computed(() =>
   form.steamAppId ? `https://store.steampowered.com/app/${form.steamAppId}/` : ''
@@ -247,9 +281,11 @@ async function submit() {
     modal
     :draggable="false"
     :style="{ width: 'min(720px, 94vw)' }"
+    @show="startTitleWidthTracking"
+    @hide="stopTitleWidthTracking"
   >
     <form class="game-form" @submit.prevent="submit">
-      <div class="field field--full">
+      <div ref="titleField" class="field field--full">
         <label for="game-title">Название игры *</label>
         <AutoComplete
           v-model="titleModel"
@@ -258,6 +294,7 @@ async function submit() {
           :delay="350"
           :min-length="2"
           :loading="steamBusy"
+          :overlay-style="titleOverlayStyle"
           :invalid="Boolean(errors.title)"
           option-label="name"
           placeholder="Начните вводить название — например, Elden Ring"
