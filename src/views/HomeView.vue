@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -20,10 +20,16 @@ const router = useRouter()
 const { games, filteredGames, loading, loaded, error, ensureLoaded, refresh, resetFilters } =
   useGames()
 const { isOwner } = useAuth()
-const { content, ensureLoaded: ensureContentLoaded } = useSiteContent()
+const { content, ensureLoaded: ensureContentLoaded, pending: contentPending } = useSiteContent()
 
 const bgVisible = ref(false)
 const heroBg = computed(() => content.value.hero.bgUrl)
+// Картинка фона проявляется после загрузки: без «прыжка» с пустого фона
+const heroBgReady = ref(false)
+
+watch(heroBg, () => {
+  heroBgReady.value = false
+})
 
 onMounted(() => {
   ensureLoaded()
@@ -38,77 +44,104 @@ function openSocial(url) {
 <template>
   <div class="page">
     <div class="container stack">
-      <section class="hero" :class="{ 'hero--media': Boolean(heroBg) }">
-        <img v-if="heroBg" class="hero__bg" :src="heroBg" alt="" decoding="async" />
+      <section
+        class="hero"
+        :class="{ 'hero--media': Boolean(heroBg) }"
+        :aria-busy="contentPending"
+      >
+        <img
+          v-if="heroBg"
+          class="hero__bg"
+          :class="{ 'hero__bg--ready': heroBgReady }"
+          :src="heroBg"
+          alt=""
+          decoding="async"
+          @load="heroBgReady = true"
+        />
         <div v-if="heroBg" class="hero__veil" aria-hidden="true" />
 
         <div class="hero__content">
-          <p class="hero__eyebrow">
-            <i class="pi pi-star-fill" />
-            <EditableText
-              model-key="hero.eyebrow"
-              label="Надпись над заголовком"
-              :maxlength="40"
-            />
-          </p>
+          <!-- Пока site_settings грузится, вместо дефолтных текстов — скелетоны -->
+          <div v-if="contentPending" class="hero__skeleton" aria-hidden="true">
+            <Skeleton width="132px" height="12px" border-radius="999px" />
+            <Skeleton width="min(420px, 92%)" height="38px" border-radius="12px" />
+            <Skeleton width="min(280px, 62%)" height="38px" border-radius="12px" />
+            <Skeleton width="min(520px, 100%)" height="13px" border-radius="6px" />
+            <Skeleton width="min(440px, 84%)" height="13px" border-radius="6px" />
+            <div class="hero__skeleton-actions">
+              <Skeleton width="168px" height="42px" border-radius="10px" />
+              <Skeleton width="168px" height="42px" border-radius="10px" />
+            </div>
+          </div>
 
-          <EditableText
-            tag="h1"
-            class="hero__title"
-            model-key="hero.title"
-            label="Заголовок главной"
-            :maxlength="80"
-          />
-
-          <EditableText
-            tag="p"
-            class="hero__subtitle"
-            model-key="hero.subtitle"
-            label="Подзаголовок главной"
-            multiline
-            :maxlength="280"
-          />
-
-          <div class="hero__actions">
-            <span v-if="site.twitchUrl" class="hero__action">
-              <Button
-                :label="content.hero.primaryLabel"
-                icon="pi pi-twitch"
-                @click="openSocial(site.twitchUrl)"
-              />
-              <EditablePencil
-                v-if="isOwner"
-                model-key="hero.primaryLabel"
-                label="Подпись кнопки Twitch"
+          <template v-else>
+            <p class="hero__eyebrow">
+              <i class="pi pi-star-fill" />
+              <EditableText
+                model-key="hero.eyebrow"
+                label="Надпись над заголовком"
                 :maxlength="40"
               />
-            </span>
+            </p>
 
-            <span v-if="site.telegramUrl" class="hero__action">
+            <EditableText
+              tag="h1"
+              class="hero__title"
+              model-key="hero.title"
+              label="Заголовок главной"
+              :maxlength="80"
+            />
+
+            <EditableText
+              tag="p"
+              class="hero__subtitle"
+              model-key="hero.subtitle"
+              label="Подзаголовок главной"
+              multiline
+              :maxlength="280"
+            />
+
+            <div class="hero__actions">
+              <span v-if="site.twitchUrl" class="hero__action">
+                <Button
+                  :label="content.hero.primaryLabel"
+                  icon="pi pi-twitch"
+                  @click="openSocial(site.twitchUrl)"
+                />
+                <EditablePencil
+                  v-if="isOwner"
+                  model-key="hero.primaryLabel"
+                  label="Подпись кнопки Twitch"
+                  :maxlength="40"
+                />
+              </span>
+
+              <span v-if="site.telegramUrl" class="hero__action">
+                <Button
+                  :label="content.hero.secondaryLabel"
+                  icon="pi pi-telegram"
+                  outlined
+                  severity="secondary"
+                  @click="openSocial(site.telegramUrl)"
+                />
+                <EditablePencil
+                  v-if="isOwner"
+                  model-key="hero.secondaryLabel"
+                  label="Подпись кнопки Telegram"
+                  :maxlength="40"
+                />
+              </span>
+
               <Button
-                :label="content.hero.secondaryLabel"
-                icon="pi pi-telegram"
+                v-if="isOwner"
+                label="Панель владельца"
+                icon="pi pi-cog"
                 outlined
                 severity="secondary"
-                @click="openSocial(site.telegramUrl)"
+                @click="router.push({ name: 'admin' })"
               />
-              <EditablePencil
-                v-if="isOwner"
-                model-key="hero.secondaryLabel"
-                label="Подпись кнопки Telegram"
-                :maxlength="40"
-              />
-            </span>
-
-            <Button
-              v-if="isOwner"
-              label="Панель владельца"
-              icon="pi pi-cog"
-              outlined
-              severity="secondary"
-              @click="router.push({ name: 'admin' })"
-            />
-          </div>
+            </div>
+          </template>
         </div>
 
         <button
@@ -227,6 +260,13 @@ function openSocial(url) {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Появляется только после загрузки файла — фон не «прыгает» с пустого */
+.hero__bg--ready {
+  opacity: 1;
 }
 
 /* Фиксированное затемнение: текст читается и на светлой, и на тёмной теме */
@@ -303,6 +343,38 @@ function openSocial(url) {
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 22px;
+}
+
+/* Скелетоны на время загрузки site_settings: пропорции как у реальных текстов */
+.hero__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: hero-skeleton-in 0.24s ease 0.12s both;
+}
+
+.hero__skeleton-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Задержка и плавное появление: на быстром ответе базы скелетон не мигает */
+@keyframes hero-skeleton-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__skeleton {
+    animation: none;
+  }
 }
 
 .results-head {

@@ -1,12 +1,23 @@
 <script setup>
+import Skeleton from 'primevue/skeleton'
+
 defineProps({
   src: { type: String, default: '' },
-  alt: { type: String, default: '' }
+  alt: { type: String, default: '' },
+  /** Настройки сайта ещё грузятся — рисуем скелетон вместо градиентной заглушки. */
+  loading: { type: Boolean, default: false }
 })
 </script>
 
 <template>
-  <span class="avatar" :class="{ 'avatar--empty': !src }">
+  <Skeleton
+    v-if="loading"
+    class="avatar--pending"
+    width="var(--avatar-size, 40px)"
+    height="var(--avatar-size, 40px)"
+    border-radius="calc(var(--avatar-size, 40px) * 0.32)"
+  />
+  <span v-else class="avatar" :class="{ 'avatar--empty': !src }">
     <img v-if="src" :src="src" :alt="alt" class="avatar__image" />
     <span v-else class="avatar__initials">MC</span>
   </span>
@@ -28,6 +39,11 @@ defineProps({
   font-size: calc(var(--avatar-size, 40px) * 0.3);
   letter-spacing: 0.04em;
   box-shadow: 0 8px 20px -12px rgba(145, 70, 255, 0.9);
+}
+
+/* Скелетон: размер приходит инлайном от Skeleton, от аватара нужно только «не сжиматься» */
+.avatar--pending {
+  flex: 0 0 auto;
 }
 
 .avatar__image {

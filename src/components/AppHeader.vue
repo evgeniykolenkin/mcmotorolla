@@ -4,7 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import BrandAvatar from './BrandAvatar.vue'
 import ImageEditDialog from './ImageEditDialog.vue'
-import { site, socials } from '../config/site'
+import { site } from '../config/site'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
 import { useSiteContent } from '../composables/useSiteContent'
@@ -12,7 +12,7 @@ import { useSiteContent } from '../composables/useSiteContent'
 const router = useRouter()
 const { isOwner } = useAuth()
 const { isDark, toggleTheme } = useTheme()
-const { content, ensureLoaded } = useSiteContent()
+const { content, ensureLoaded, pending } = useSiteContent()
 
 // Дефолты видны сразу, сохранённые тексты подставятся после ответа базы
 ensureLoaded()
@@ -27,7 +27,7 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
     <div class="container header-inner">
       <div class="brand-wrap">
         <RouterLink :to="{ name: 'home' }" class="brand" aria-label="На главную">
-          <BrandAvatar :src="content.brand.avatarUrl" :alt="site.nickname" />
+          <BrandAvatar :src="content.brand.avatarUrl" :alt="site.nickname" :loading="pending" />
         </RouterLink>
 
         <span class="brand__name" :title="site.nickname">{{ site.nickname }}</span>
@@ -60,20 +60,6 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
         <RouterLink :to="{ name: 'home' }" class="nav__link">
           <i class="pi pi-star-fill" /> <span class="nav__link-text">Игры</span>
         </RouterLink>
-
-        <a
-          v-for="social in socials"
-          :key="social.key"
-          :href="social.url"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="nav__link"
-          :class="`nav__link--${social.key}`"
-          v-tooltip.bottom="social.title"
-        >
-          <i :class="social.icon" />
-          <span class="nav__social-text">{{ social.label }}</span>
-        </a>
 
         <Button
           v-tooltip.bottom="themeLabel"
@@ -204,19 +190,7 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
   color: var(--app-accent);
 }
 
-.nav__link--twitch i {
-  color: #a970ff;
-}
-
-.nav__link--telegram i {
-  color: #2aabee;
-}
-
 @media (max-width: 720px) {
-  .nav__social-text {
-    display: none;
-  }
-
   .nav__link {
     padding: 8px 9px;
   }

@@ -19,6 +19,13 @@ const error = ref('')
 
 const content = computed(() => applyOverrides(overrides.value))
 
+/**
+ * Первая загрузка ещё идёт — компоненты показывают скелетоны, чтобы не мигал
+ * текст дефолтов. Если база ответила ошибкой, `loaded` остаётся false, но
+ * `error` заполнен: скелетон снимается и сразу видны дефолты.
+ */
+const pending = computed(() => !loaded.value && !error.value)
+
 async function reload() {
   if (loading.value) return
 
@@ -80,6 +87,7 @@ export function useSiteContent() {
     overrides,
     loading,
     loaded,
+    pending,
     saving,
     error,
     ensureLoaded,
