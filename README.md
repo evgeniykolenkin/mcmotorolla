@@ -17,6 +17,7 @@
 | primeicons / primelocale (ru) | 8.0.2 / 2.7.0 |
 | vue-router | 4.6 |
 | @supabase/supabase-js | 2.119 |
+| markdown-it / DOMPurify | 15.0 / 3.4 |
 | Postgres (Supabase) | — |
 
 PrimeVue зафиксирован на 4.x намеренно: в 5.x сменилась лицензионная модель.
@@ -69,6 +70,10 @@ cp .env.example .env.local   # Windows: Copy-Item .env.example .env.local
    Затем — `supabase/0002_game_meta.sql`: колонки `release_year` и `steam_app_id` под
    автозаполнение из Steam (плюс разовая чистка старых пустых значений). Пока этот скрипт
    не применён, приложение продолжает сохранять игры, но без года и appid.
+   Затем — `supabase/0003_site_settings_and_media.sql`: таблица `site_settings` для
+   редактируемых текстов и публичный бакет Storage `media` для аватарки и фона главной.
+   **Этот скрипт нужно применить до деплоя кода**, который его использует: без таблицы
+   карандашики покажут ошибку сохранения, а без бакета не загрузится картинка.
 3. **Authentication → Users → Add user**: email владельца + пароль, включить
    **Auto Confirm User**.
 4. **Authentication → Sign In / Providers → Email**: выключить **Allow new users to sign up** —
@@ -77,6 +82,23 @@ cp .env.example .env.local   # Windows: Copy-Item .env.example .env.local
    выбрать подсказку Steam, сохранить. Запись появляется на главной.
 6. Проверка защиты (по желанию, из терминала): анонимный `GET /rest/v1/games` возвращает
    только опубликованные строки, а `POST` с publishable key — `401 permission denied`.
+7. Проверка правок с сайта: на главной войти в `/admin`, вернуться на `/`, нажать карандашик
+   у заголовка → сохранить → обновить страницу. Текст должен остаться. То же с аватаркой
+   (камера на аватаре) и фоном (кнопка «Фон» в углу главной секции).
+
+### Файлы и картинки (Storage)
+
+`supabase/0003_site_settings_and_media.sql` создаёт публичный бакет `media` (лимит 5 МБ на
+файл, типы `image/jpeg`, `image/png`, `image/webp`, `image/avif`) и четыре политики на
+`storage.objects`: читают все, загружает, перезаписывает и удаляет только вошедший
+владелец — и только в папках `avatar/` и `hero/`.
+
+- Если бакет не появился в **Storage**, создайте его вручную (`media`, Public) и добавьте
+  политики из конца `0003`-скрипта.
+- Free-тариф: 1 ГБ Storage и 5 ГБ трафика в месяц. Два файла по ~200 КБ плюс годовое
+  кеширование в браузере (`cacheControl` 1 год) укладываются в лимиты с запасом.
+- Сжатие делается в браузере до загрузки: аватар до 512 px, фон до 1920 px, WebP. Файл
+  с телефона на 4 МБ превращается в ~200 КБ, поэтому телефонный интернет не страдает.
 
 ### Что защищено и как
 
@@ -105,6 +127,32 @@ Publishable key публичный — доступ к строкам огран
   (письмо со ссылкой; встроенный SMTP free-тарифа ограничен по частоте) либо сброс через
   Admin API с secret key — только с локальной машины, ключ не попадает ни в Vercel, ни в бандл.
 
+## Редактирование текстов и картинок
+
+Всё, что раньше правилось только в коде, владелец меняет прямо на сайте: после входа в
+`/admin` рядом с текстом появляется карандашик, у аватарки — камера, у главной секции —
+кнопка «Фон».
+
+| Что | Где | Ключ в `site_settings` |
+| --- | --- | --- |
+| Ник и подпись в шапке | шапка | `brand.nickname`, `brand.tagline` |
+| Аватарка | шапка, камера поверх аватара | `brand.avatarUrl` |
+| Надпись, заголовок и подзаголовок | главная | `hero.eyebrow`, `hero.title`, `hero.subtitle` |
+| Подписи кнопок Twitch и Telegram | главная | `hero.primaryLabel`, `hero.secondaryLabel` |
+| Фон главной секции | главная, кнопка «Фон» | `hero.bgUrl` |
+
+- Тексты живут в таблице `public.site_settings` (одна строка = одно поле): читают все,
+  пишет только вошедший владелец — политики те же, что у `games`.
+- Значения по умолчанию — в `src/config/content.js`. Если база недоступна или ключа ещё
+  нет, показываются они, поэтому шапка и герой никогда не остаются пустыми. Кнопка
+  «Как было» в попапе удаляет правку и возвращает дефолт.
+- Файлы лежат в публичном бакете `media` (папки `avatar/` и `hero/`), см. раздел
+  «Файлы и картинки (Storage)» выше.
+- В локальном режиме (без Supabase) загрузка файлов выключена — диалог предложит вставить
+  ссылку на картинку, а тексты сохранятся в `localStorage` (`mcmotorolla.site.v1`).
+- Кнопка «Добавить» из шапки убрана: добавление игры — через «Панель владельца» на главной
+  или пустое состояние списка.
+
 ## Локальный режим (без Supabase)
 
 Если переменные Supabase пустые, данные лежат в `localStorage` браузера
@@ -117,19 +165,24 @@ Publishable key публичный — доступ к строкам огран
 ```
 src/
   components/     AppHeader, StatsBar, GamesToolbar, GameCard, RatingBadge,
-                  RatingInput, GameFormDialog, GameDetail, LoginPanel, EmptyState
-  composables/    useGames (состояние + фильтры), useAuth, useTheme
-  config/         site.js — ник, ссылки, тексты
+                  RatingInput, GameFormDialog, GameDetail, LoginPanel, EmptyState,
+                  EditableText, EditablePencil, EditTextPopover, ImageEditDialog,
+                  BrandAvatar, MarkdownText
+  composables/    useGames (состояние + фильтры), useAuth, useTheme, useSiteContent
+  config/         site.js — ник, ссылки, тексты; content.js — дефолты правок с сайта
   router/         маршруты и заголовки страниц
   services/       gamesRepository.js (фасад), supabaseGamesRepo.js, supabaseClient.js,
-                  localGamesRepo.js (localStorage), steamClient.js (автозаполнение)
-  styles/         base.css — токены, тёмная/светлая тема
-  utils/          slugify, format (даты, оценки, цвета)
+                  localGamesRepo.js (localStorage), steamClient.js (автозаполнение),
+                  settingsRepository.js (тексты сайта) + supabase/localSettingsRepo.js,
+                  mediaRepo.js (загрузка картинок в Storage)
+  styles/         base.css — токены, тёмная/светлая тема, стили markdown
+  utils/          slugify, format (даты, оценки, цвета), image (сжатие), markdown (рендер)
   views/          HomeView, GameView, AdminView, NotFoundView
 api/               _steamClient.js — клиент Steam Store API, steam.js — функция /api/steam
 .github/workflows/ supabase-keepalive.yml — ежедневный пинг, чтобы free-проект не засыпал
 supabase/          0001_games.sql — таблица games, RLS-политики, триггер updated_at;
                    0002_game_meta.sql — колонки release_year и steam_app_id;
+                   0003_site_settings_and_media.sql — тексты сайта и бакет media;
                    cleanup_demo_games.sql — разовое удаление старого демо-набора
 ```
 
@@ -141,6 +194,29 @@ supabase/          0001_games.sql — таблица games, RLS-политики
 - 7–8 — салатовый («хорошо»)
 - 5–6 — оранжевый («средне»)
 - 1–4 — красный («слабо»)
+
+## Markdown в отзывах
+
+Поле «Как проходил» понимает markdown — единственное поле с разметкой, вердикт и остальные
+поля остаются простым текстом.
+
+| Написать | Получится |
+| --- | --- |
+| `**жирный**` | **жирный** |
+| `*курсив*` | *курсив* |
+| `## Подзаголовок` | подзаголовок |
+| `- пункт` | маркированный список |
+| `1. пункт` | нумерованный список |
+| `> цитата` | цитата |
+| `[текст](https://…)` | ссылка |
+| `---` | разделитель |
+
+- Пустая строка между блоками = новый абзац, одиночный перенос строки тоже сохраняется.
+- В форме есть кнопка «?» со шпаргалкой и переключатель «Текст / Предпросмотр».
+- Сырой HTML не исполняется: `markdown-it` работает с `html: false`, а результат перед
+  вставкой дополнительно чистит `DOMPurify`. Внешние ссылки открываются в новой вкладке
+  с `rel="noopener noreferrer"`.
+- Карточки на главной показывают вердикт, поэтому разметка видна только на странице игры.
 
 ## Автозаполнение из Steam
 
@@ -229,8 +305,11 @@ Free-проект Supabase засыпает после ~7 дней без зап
 3. Keep-alive для Supabase free-tier — готово: GitHub Actions-пинг раз в сутки.
 4. Автозаполнение из Steam — готово: прокси `/api/steam`, подсказки названий, обложка,
    жанр и год (`supabase/0002_game_meta.sql`).
-5. Бонусы: загрузка обложек в Supabase Storage, markdown в отзывах, смена пароля из
-   `/admin`, ссылка на страницу игры в Steam.
+5. Редактирование с сайта — готово: тексты шапки/главной, аватарка и фон через
+   `site_settings` + Storage (`supabase/0003_site_settings_and_media.sql`), markdown в
+   отзыве «Как проходил» (`markdown-it` + `DOMPurify`).
+6. Осталось из идей: загрузка обложек игр в Supabase Storage, смена пароля из `/admin`,
+   ссылка на страницу игры в Steam.
 
 
 ## Лицензия
