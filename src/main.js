@@ -14,6 +14,7 @@ import App from './App.vue'
 import router from './router'
 import { applyInitialTheme } from './composables/useTheme'
 import { initAuth } from './composables/useAuth'
+import { useSiteContent } from './composables/useSiteContent'
 
 /** Фиолетовый акцент в духе Twitch поверх пресета Aura. */
 const AppPreset = definePreset(Aura, {
@@ -42,6 +43,9 @@ applyInitialTheme()
  */
 async function bootstrap() {
   await initAuth()
+
+  // Тексты шапки и главной грузим в фоне: дефолты из config/content.js видны сразу
+  useSiteContent().ensureLoaded()
 
   createApp(App)
     .use(router)
