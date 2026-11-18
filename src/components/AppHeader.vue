@@ -3,9 +3,8 @@ import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import BrandAvatar from './BrandAvatar.vue'
-import EditableText from './EditableText.vue'
 import ImageEditDialog from './ImageEditDialog.vue'
-import { socials } from '../config/site'
+import { site, socials } from '../config/site'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
 import { useSiteContent } from '../composables/useSiteContent'
@@ -28,24 +27,10 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
     <div class="container header-inner">
       <div class="brand-wrap">
         <RouterLink :to="{ name: 'home' }" class="brand" aria-label="На главную">
-          <BrandAvatar :src="content.brand.avatarUrl" :alt="content.brand.nickname" />
+          <BrandAvatar :src="content.brand.avatarUrl" :alt="site.nickname" />
         </RouterLink>
 
-        <div class="brand__text">
-          <EditableText
-            tag="strong"
-            model-key="brand.nickname"
-            label="Ник в шапке"
-            :maxlength="40"
-          />
-          <EditableText
-            tag="small"
-            model-key="brand.tagline"
-            label="Подпись в шапке"
-            class="muted"
-            :maxlength="60"
-          />
-        </div>
+        <span class="brand__name" :title="site.nickname">{{ site.nickname }}</span>
 
         <button
           v-if="isOwner"
@@ -138,7 +123,7 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 68px;
+  min-height: 76px;
 }
 
 .brand-wrap {
@@ -147,7 +132,7 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
   align-items: center;
   gap: 12px;
   min-width: 0;
-  --avatar-size: 40px;
+  --avatar-size: 60px;
 }
 
 .brand {
@@ -157,8 +142,8 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
 
 .brand-wrap__edit {
   position: absolute;
-  left: 24px;
-  bottom: -4px;
+  left: calc(var(--avatar-size, 60px) - 20px);
+  bottom: -2px;
   display: grid;
   place-items: center;
   width: 20px;
@@ -178,45 +163,15 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
   border-color: var(--app-accent);
 }
 
-.brand__text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
+.brand__name {
   min-width: 0;
-}
-
-.brand__text strong {
-  display: flex;
-  align-items: center;
-  min-width: 0;
+  overflow: hidden;
   font-size: 1rem;
-}
-
-.brand__text strong :deep(.editable-text__value) {
-  overflow: hidden;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.brand__text strong :deep(.editable-text__pencil) {
-  flex: 0 0 auto;
-}
-
-.brand__text small {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  font-size: 0.75rem;
-}
-
-.brand__text small :deep(.editable-text__value) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.brand__text small :deep(.editable-text__pencil) {
-  flex: 0 0 auto;
 }
 
 .nav {
@@ -258,10 +213,6 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
 }
 
 @media (max-width: 720px) {
-  .brand__text small {
-    display: none;
-  }
-
   .nav__social-text {
     display: none;
   }
@@ -274,21 +225,20 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
 @media (max-width: 560px) {
   .header-inner {
     gap: 8px;
-    min-height: 60px;
+    min-height: 64px;
   }
 
   .brand-wrap {
-    --avatar-size: 34px;
+    --avatar-size: 48px;
   }
 
   .brand-wrap__edit {
-    left: 20px;
     width: 18px;
     height: 18px;
     font-size: 0.55rem;
   }
 
-  .brand__text strong {
+  .brand__name {
     font-size: 0.9rem;
   }
 

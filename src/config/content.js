@@ -10,9 +10,8 @@ import { site } from './site'
  * Ключ — путь через точку: 'hero.title' → content.hero.title.
  */
 export const contentDefaults = {
+  // В шапке правится только картинка: ник и подпись живут в src/config/site.js
   brand: {
-    nickname: site.nickname,
-    tagline: site.tagline,
     avatarUrl: ''
   },
   hero: {
@@ -31,8 +30,6 @@ export const contentDefaults = {
  * Для ссылок на картинки пустая строка — это осознанное «картинки нет».
  */
 const KEEP_DEFAULT_WHEN_EMPTY = new Set([
-  'brand.nickname',
-  'brand.tagline',
   'hero.eyebrow',
   'hero.title',
   'hero.subtitle',
