@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import Tag from 'primevue/tag'
 import RatingBadge from './RatingBadge.vue'
+import StatusBadge from './StatusBadge.vue'
 import { formatDate, formatHours } from '../utils/format'
 
 const props = defineProps({
@@ -35,7 +36,10 @@ const initials = computed(() =>
         <span>{{ initials }}</span>
       </div>
 
-      <Tag v-if="!game.published" class="game-card__draft" value="Черновик" severity="warn" />
+      <div class="game-card__badges">
+        <Tag v-if="!game.published" value="Черновик" severity="warn" />
+        <StatusBadge :status="game.status" />
+      </div>
       <RatingBadge :rating="game.rating" class="game-card__rating" />
     </div>
 
@@ -85,10 +89,16 @@ const initials = computed(() =>
   font-size: 2rem;
 }
 
-.game-card__draft {
+.game-card__badges {
   position: absolute;
   top: 10px;
   right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 20px);
 }
 
 .game-card__rating {

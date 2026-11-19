@@ -45,6 +45,29 @@ export const STATUS_LABELS = Object.fromEntries(
 )
 
 /**
+ * Короткие подписи для бейджа на карточке: «Прохожу сейчас» в узкую плашку
+ * не влезает. Полные подписи остаются в форме и в title бейджа.
+ */
+export const STATUS_SHORT_LABELS = {
+  completed: 'Пройдена',
+  playing: 'Прохожу',
+  dropped: 'Брошена'
+}
+
+/**
+ * Статус для бейджа: старые записи без статуса считаем пройденными —
+ * ровно так же, как сортировка «По прохождению» в useGames.
+ */
+export function statusTone(status) {
+  const value = STATUS_SHORT_LABELS[status] ? status : 'completed'
+  return {
+    tone: value,
+    short: STATUS_SHORT_LABELS[value],
+    label: STATUS_LABELS[value]
+  }
+}
+
+/**
  * Цветовая шкала оценки 1–10.
  * tone — суффикс для CSS-класса, label — текстовое пояснение.
  */
