@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -48,20 +48,206 @@ let positionRequest = 0
 const currentUrl = computed(() => getByPath(content.value, props.modelKey) ?? '')
 const previewUrl = computed(() => picked.value?.url || urlDraft.value.trim() || currentUrl.value)
 const busyAll = computed(() => busy.value || saving.value)
+// Одна кнопка «Сохранить»: активна, когда есть файл или вставлена ссылка
+const canSave = computed(() => Boolean(picked.value) || Boolean(urlDraft.value.trim()))
 
 const positionOptions = BG_POSITIONS
 const currentPosition = computed(() => {
-  if (!props.positionKey) return 'center'
+  if (!props.positionKey) return '50% 50%'
   if (localPosition.value) return localPosition.value
   return normalizeBgPosition(getByPath(content.value, props.positionKey))
 })
 const showPosition = computed(() => Boolean(props.positionKey) && Boolean(previewUrl.value))
+
+/*
+ * Рамка на «всей картинке»: показывает, какой кусок кадра останется на главной.
+ * Размеры считаем в пикселях по реально отрисованной картинке (object-fit:
+ * contain оставляет поля), чтобы рамка совпадала с превью сверху.
+ */
+const CROP_RATIO = 21 / 8
+
+const cropBox = ref(null)
+const cropImage = ref(null)
+const cropFrame = ref(null)
+const cropGeometry = ref(null)
+const cropError = ref(false)
+const dragging = ref(false)
+let cropObserver = null
+let dragState = null
+
+const positionParts = computed(() => {
+  const match = currentPosition.value.match(/(\d{1,3})%\s+(\d{1,3})%/)
+  if (!match) return { x: 50, y: 50 }
+  return { x: Number(match[1]), y: Number(match[2]) }
+})
+
+// Cover обрезает только по одной оси — по ней рамка и двигается
+const cropAxis = computed(() => {
+  const geometry = cropGeometry.value
+  if (!geometry) return ''
+  if (geometry.rangeX > 0.5) return 'x'
+  if (geometry.rangeY > 0.5) return 'y'
+  return ''
+})
+
+const cropPercent = computed(() => Math.round(positionParts.value[cropAxis.value || 'y']))
+
+const frameStyle = computed(() => {
+  const geometry = cropGeometry.value
+  if (!geometry) return { display: 'none' }
+
+  const { x, y } = positionParts.value
+  return {
+    width: `${geometry.cropW}px`,
+    height: `${geometry.cropH}px`,
+    left: `${geometry.offsetX + (geometry.pictureW - geometry.cropW) * (x / 100)}px`,
+    top: `${geometry.offsetY + (geometry.pictureH - geometry.cropH) * (y / 100)}px`
+  }
+})
+
+const cropHint = computed(() => {
+  if (cropError.value) return 'Не удалось загрузить картинку — проверьте ссылку.'
+  if (!cropGeometry.value) return 'Считаем пропорции картинки…'
+  if (cropAxis.value === 'x') {
+    return 'Кадр главной обрезает картинку по горизонтали: тяните рамку влево и вправо.'
+  }
+  if (cropAxis.value === 'y') {
+    return 'Кадр главной обрезает картинку по вертикали: тяните рамку вверх и вниз.'
+  }
+  return 'Пропорции картинки почти совпадают с кадром — кадрировать почти нечего.'
+})
+
+/** Пересчёт рамки под текущий размер блока и натуральные пропорции картинки. */
+function measureCrop() {
+  const image = cropImage.value
+  if (!image || !image.naturalWidth || !image.naturalHeight) return
+
+  const rect = image.getBoundingClientRect()
+  if (!rect.width || !rect.height) return
+
+  const scale = Math.min(rect.width / image.naturalWidth, rect.height / image.naturalHeight)
+  const pictureW = image.naturalWidth * scale
+  const pictureH = image.naturalHeight * scale
+
+  // Рамка всегда в пропорциях героя: одна сторона картинки остаётся целиком
+  const cropW = Math.min(pictureW, pictureH * CROP_RATIO)
+  const cropH = cropW / CROP_RATIO
+
+  cropGeometry.value = {
+    pictureW,
+    pictureH,
+    cropW,
+    cropH,
+    offsetX: (rect.width - pictureW) / 2,
+    offsetY: (rect.height - pictureH) / 2,
+    rangeX: pictureW - cropW,
+    rangeY: pictureH - cropH
+  }
+}
+
+function onCropImageLoad() {
+  cropError.value = false
+  measureCrop()
+}
+
+function onCropImageError() {
+  cropError.value = true
+  cropGeometry.value = null
+}
+
+function onFramePointerDown(event) {
+  if (!cropAxis.value || busy.value) return
+
+  event.preventDefault()
+  // Незавершённое сохранение пресета не должно откатывать начатое перетаскивание
+  positionRequest += 1
+  try {
+    cropFrame.value?.setPointerCapture?.(event.pointerId)
+  } catch {
+    // синтетические события без активного указателя — просто тянем без capture
+  }
+  dragState = {
+    pointerId: event.pointerId,
+    axis: cropAxis.value,
+    startX: event.clientX,
+    startY: event.clientY,
+    start: { ...positionParts.value },
+    value: currentPosition.value
+  }
+  dragging.value = true
+}
+
+function onFramePointerMove(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId || !cropGeometry.value) return
+
+  const { axis, start } = dragState
+  const geometry = cropGeometry.value
+  const range = axis === 'x' ? geometry.rangeX : geometry.rangeY
+  if (range <= 0.5) return
+
+  const delta = axis === 'x' ? event.clientX - dragState.startX : event.clientY - dragState.startY
+  const value = Math.min(100, Math.max(0, Math.round(start[axis] + (delta / range) * 100)))
+  localPosition.value = axis === 'x'
+    ? `${value}% ${start.y}%`
+    : `${start.x}% ${value}%`
+}
+
+function onFramePointerUp(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return
+
+  const previous = dragState.value
+  const next = currentPosition.value
+  dragState = null
+  dragging.value = false
+
+  if (next !== previous) persistPosition(next)
+}
+
+/** Рамка — тоже слайдер: стрелки двигают её с клавиатуры. */
+function onFrameKeydown(event) {
+  const axis = cropAxis.value
+  const geometry = cropGeometry.value
+  if (!axis || !geometry) return
+
+  const direction =
+    event.key === 'ArrowRight' || event.key === 'ArrowDown'
+      ? 1
+      : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+        ? -1
+        : 0
+  if (!direction) return
+
+  event.preventDefault()
+  const start = positionParts.value
+  // Шаг в процентах, а не в пикселях: shift — быстрый шаг
+  const step = event.shiftKey ? 20 : 5
+  const value = Math.min(100, Math.max(0, start[axis] + direction * step))
+  const next = axis === 'x' ? `${value}% ${start.y}%` : `${start.x}% ${value}%`
+
+  if (next !== currentPosition.value) persistPosition(next)
+}
+
+watch(cropBox, (element) => {
+  cropObserver?.disconnect()
+  if (!element || typeof ResizeObserver !== 'function') return
+
+  cropObserver = new ResizeObserver(measureCrop)
+  cropObserver.observe(element)
+})
+
+watch(previewUrl, () => {
+  cropGeometry.value = null
+  cropError.value = false
+  nextTick(measureCrop)
+})
 
 watch(visible, (open) => {
   if (open) {
     error.value = ''
     urlDraft.value = ''
     localPosition.value = ''
+    cropGeometry.value = null
+    nextTick(measureCrop)
   } else {
     revokePicked()
   }
@@ -72,7 +258,10 @@ function revokePicked() {
   picked.value = null
 }
 
-onBeforeUnmount(revokePicked)
+onBeforeUnmount(() => {
+  cropObserver?.disconnect()
+  revokePicked()
+})
 
 function pickFile() {
   fileInput.value?.click()
@@ -101,6 +290,18 @@ async function onFileChange(event) {
   }
 }
 
+/**
+ * Технические ответы Supabase (RLS, протухшая сессия) владельцу ничего не говорят:
+ * заменяем их на понятное действие. Остальные ошибки показываем как есть.
+ */
+function describeError(err, fallback) {
+  const message = String(err?.message ?? '')
+  if (/permission denied|row-level security|jwt|not authenticated/i.test(message)) {
+    return 'Нет прав на сохранение — войдите как владелец.'
+  }
+  return message || fallback
+}
+
 async function applyValue(url) {
   const previous = currentUrl.value
 
@@ -112,7 +313,7 @@ async function applyValue(url) {
     emit('saved', url)
     visible.value = false
   } catch (err) {
-    error.value = err?.message ?? 'Не удалось сохранить картинку'
+    error.value = describeError(err, 'Не удалось сохранить картинку')
   } finally {
     busy.value = false
   }
@@ -131,20 +332,25 @@ async function savePicked() {
     emit('saved', url)
     visible.value = false
   } catch (err) {
-    error.value = err?.message ?? 'Не удалось загрузить картинку'
+    error.value = describeError(err, 'Не удалось загрузить картинку')
   } finally {
     busy.value = false
   }
 }
 
-function saveUrl() {
-  const url = urlDraft.value.trim()
-  if (!url) {
-    error.value = 'Вставьте ссылку на картинку'
+/**
+ * Единственная кнопка сохранения: файл важнее ссылки. Если файла нет —
+ * сохраняем вставленную ссылку (в локальном режиме это единственный путь).
+ */
+function saveImage() {
+  if (busyAll.value) return
+  if (picked.value) {
+    void savePicked()
     return
   }
 
-  applyValue(url)
+  const url = urlDraft.value.trim()
+  if (url) void applyValue(url)
 }
 
 function clearImage() {
@@ -153,12 +359,11 @@ function clearImage() {
 
 /**
  * Положение сохраняем сразу: картинка не перезагружается, меняется только object-position.
- * Превью обновляется мгновенно, запрос уходит в фон; при ошибке откатываемся назад.
+ * Превью обновляется мгновенно, запрос уходит в фон; при ошибке показываем сохранённое значение.
  */
-async function savePosition(position) {
-  if (!props.positionKey || !position || position === currentPosition.value) return
+async function persistPosition(position) {
+  if (!props.positionKey || !position) return
 
-  const previous = currentPosition.value
   const request = ++positionRequest
   localPosition.value = position
   error.value = ''
@@ -166,9 +371,14 @@ async function savePosition(position) {
     await save({ [props.positionKey]: position })
     emit('saved', position)
   } catch (err) {
-    if (request === positionRequest) localPosition.value = previous
-    error.value = err?.message ?? 'Не удалось сохранить положение картинки'
+    if (request === positionRequest) localPosition.value = ''
+    error.value = describeError(err, 'Не удалось сохранить положение картинки')
   }
+}
+
+function savePosition(position) {
+  if (!props.positionKey || !position || position === currentPosition.value) return
+  void persistPosition(position)
 }
 </script>
 
@@ -212,9 +422,41 @@ async function savePosition(position) {
         />
       </div>
 
+      <div v-if="showPosition" class="image-edit__crop">
+        <span class="image-edit__label">Вся картинка</span>
+        <div ref="cropBox" class="image-edit__crop-box">
+          <img
+            ref="cropImage"
+            :src="previewUrl"
+            alt=""
+            class="image-edit__crop-image"
+            @load="onCropImageLoad"
+            @error="onCropImageError"
+          />
+          <span
+            ref="cropFrame"
+            class="image-edit__crop-frame"
+            :class="{ 'image-edit__crop-frame--dragging': dragging }"
+            :style="frameStyle"
+            role="slider"
+            tabindex="0"
+            aria-label="Видимая часть фона"
+            :aria-valuenow="cropPercent"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            :aria-orientation="cropAxis === 'x' ? 'horizontal' : 'vertical'"
+            @pointerdown="onFramePointerDown"
+            @pointermove="onFramePointerMove"
+            @pointerup="onFramePointerUp"
+            @pointercancel="onFramePointerUp"
+            @keydown="onFrameKeydown"
+          />
+        </div>
+        <p class="image-edit__hint muted">{{ cropHint }}</p>
+      </div>
+
       <p v-if="showPosition" class="image-edit__hint muted">
-        Превью в пропорциях главной: видно, какой кусок кадра останется на экране.
-        Положение сохраняется сразу, кнопка «Сохранить» не нужна.
+        Положение сохраняется сразу — отдельная кнопка для него не нужна.
       </p>
 
       <p v-if="hint" class="image-edit__hint muted">{{ hint }}</p>
@@ -236,11 +478,11 @@ async function savePosition(position) {
           @click="pickFile"
         />
         <Button
-          v-if="picked"
-          label="Загрузить и сохранить"
+          label="Сохранить"
           icon="pi pi-check"
           :loading="busyAll"
-          @click="savePicked"
+          :disabled="busyAll || !canSave"
+          @click="saveImage"
         />
         <small v-if="picked" class="muted">{{ formatBytes(picked.size) }}</small>
       </div>
@@ -251,16 +493,16 @@ async function savePosition(position) {
 
       <div class="image-edit__url">
         <label class="image-edit__label" for="image-edit-url">Или ссылка на картинку</label>
-        <div class="image-edit__row">
-          <InputText
-            id="image-edit-url"
-            v-model="urlDraft"
-            placeholder="https://…"
-            class="image-edit__url-input"
-            @keyup.enter="saveUrl"
-          />
-          <Button label="Сохранить" :disabled="busyAll || !urlDraft.trim()" @click="saveUrl" />
-        </div>
+        <InputText
+          id="image-edit-url"
+          v-model="urlDraft"
+          placeholder="https://…"
+          class="image-edit__url-input"
+          @keyup.enter="saveImage"
+        />
+        <small class="image-edit__hint muted">
+          Вставьте ссылку и нажмите «Сохранить». Файл важнее ссылки.
+        </small>
       </div>
 
       <small v-if="error" class="image-edit__error">{{ error }}</small>
@@ -332,6 +574,49 @@ async function savePosition(position) {
   flex-wrap: wrap;
 }
 
+.image-edit__crop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.image-edit__crop-box {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--app-surface-2);
+  box-shadow: inset 0 0 0 1px var(--app-border);
+}
+
+.image-edit__crop-image {
+  display: block;
+  width: 100%;
+  height: 168px;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Рамка кадра главной: затемнение вокруг — box-shadow, без лишних слоёв разметки */
+.image-edit__crop-frame {
+  position: absolute;
+  display: block;
+  border: 2px solid var(--app-accent);
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(8, 6, 16, 0.62);
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+}
+
+.image-edit__crop-frame:focus-visible {
+  border-color: #fff;
+}
+
+.image-edit__crop-frame--dragging {
+  cursor: grabbing;
+}
+
 .image-edit__file {
   display: none;
 }
@@ -366,8 +651,7 @@ async function savePosition(position) {
 }
 
 .image-edit__url-input {
-  flex: 1;
-  min-width: 180px;
+  width: 100%;
 }
 
 .image-edit__error {
@@ -380,5 +664,12 @@ async function savePosition(position) {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* На узком экране диалог не должен раздуваться: рамке хватает 132px */
+@media (max-width: 420px) {
+  .image-edit__crop-image {
+    height: 132px;
+  }
 }
 </style>

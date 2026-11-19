@@ -27,8 +27,8 @@ export const contentDefaults = {
     // Добавленные владельцем кнопки: JSON-массив [{ label, url, icon }]
     extraButtons: [],
     bgUrl: '',
-    // Куда кадрировать фон главной: top | center | bottom
-    bgPosition: 'center'
+    // Куда кадрировать фон главной: CSS object-position в процентах
+    bgPosition: '50% 50%'
   },
   footer: {
     text: `${site.nickname} · дневник пройденных игр`
@@ -55,14 +55,21 @@ export const BUTTON_ICONS = [
 
 export const MAX_EXTRA_BUTTONS = 4
 
+/**
+ * Положение фона главной — это значение CSS object-position в процентах.
+ * Проценты, а не top/center/bottom: владелец выбирает любой кусок кадра,
+ * а не три фиксированных, и это же значение двигает рамку в диалоге.
+ */
 export const BG_POSITIONS = [
-  { label: 'Верх', value: 'top' },
-  { label: 'Центр', value: 'center' },
-  { label: 'Низ', value: 'bottom' }
+  { label: 'Верх', value: '50% 0%' },
+  { label: 'Центр', value: '50% 50%' },
+  { label: 'Низ', value: '50% 100%' }
 ]
 
 const ICON_VALUES = new Set(BUTTON_ICONS.map((icon) => icon.value))
-const POSITION_VALUES = new Set(BG_POSITIONS.map((position) => position.value))
+// Старые записи в базе: до раунда 5 позиция хранилась как top | center | bottom
+const POSITION_PRESETS = { top: '50% 0%', center: '50% 50%', bottom: '50% 100%' }
+const POSITION_PATTERN = /^(\d{1,3})%\s+(\d{1,3})%$/
 const FALLBACK_ICON = 'pi pi-external-link'
 
 /** Ссылка кнопки: только http(s), иначе пустая строка. */
@@ -95,10 +102,19 @@ export function normalizeExtraButtons(value) {
   return list.map(normalizeExtraButton).filter(Boolean).slice(0, MAX_EXTRA_BUTTONS)
 }
 
-/** Позиция фона: незнакомое значение превращается в центр. */
+/**
+ * Позиция фона: старые top/center/bottom, проценты вида «50% 30%» или дефолт.
+ * Проценты ограничиваем 0–100, чтобы в CSS не улетело что-то вроде «300%».
+ */
 export function normalizeBgPosition(value) {
-  const position = String(value ?? '').trim()
-  return POSITION_VALUES.has(position) ? position : 'center'
+  const position = String(value ?? '').trim().toLowerCase()
+  if (POSITION_PRESETS[position]) return POSITION_PRESETS[position]
+
+  const match = position.match(POSITION_PATTERN)
+  if (!match) return '50% 50%'
+
+  const clamp = (part) => Math.min(100, Math.max(0, Number(part)))
+  return `${clamp(match[1])}% ${clamp(match[2])}%`
 }
 
 /**
