@@ -28,9 +28,8 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
       <div class="brand-wrap">
         <RouterLink :to="{ name: 'home' }" class="brand" aria-label="На главную">
           <BrandAvatar :src="content.brand.avatarUrl" :alt="site.nickname" :loading="pending" />
+          <span class="brand__name">{{ site.nickname }}</span>
         </RouterLink>
-
-        <span class="brand__name" :title="site.nickname">{{ site.nickname }}</span>
 
         <button
           v-if="isOwner"
@@ -123,7 +122,15 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
 
 .brand {
   display: inline-flex;
+  align-items: center;
+  gap: 12px;
   flex: 0 0 auto;
+  min-width: 0;
+  color: inherit;
+}
+
+.brand:hover .brand__name {
+  color: var(--app-accent);
 }
 
 .brand-wrap__edit {
@@ -158,6 +165,7 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 0.15s ease;
 }
 
 .nav {

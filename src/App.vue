@@ -2,7 +2,14 @@
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
 import AppHeader from './components/AppHeader.vue'
+import EditableText from './components/EditableText.vue'
+import { useSiteContent } from './composables/useSiteContent'
 import { site, socials } from './config/site'
+
+// Текст подвала правится на сайте; ensureLoaded идемпотентен и уже вызывается
+// при старте приложения, здесь — страховка для прямых ссылок на другие разделы.
+const { ensureLoaded } = useSiteContent()
+ensureLoaded()
 </script>
 
 <template>
@@ -15,7 +22,13 @@ import { site, socials } from './config/site'
 
     <footer class="app-footer">
       <div class="container footer-inner">
-        <span class="muted">{{ site.nickname }} · дневник пройденных игр</span>
+        <EditableText
+          tag="span"
+          class="muted footer-text"
+          model-key="footer.text"
+          label="Текст в подвале"
+          :maxlength="120"
+        />
 
         <div class="footer-side">
           <a
@@ -65,6 +78,13 @@ import { site, socials } from './config/site'
   flex-wrap: wrap;
 }
 
+.footer-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .footer-side {
   display: flex;
   align-items: center;
@@ -85,7 +105,11 @@ import { site, socials } from './config/site'
 }
 
 .footer-social i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.95rem;
+  line-height: 1;
 }
 
 .footer-social--twitch i {

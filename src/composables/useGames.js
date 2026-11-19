@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { gamesRepository } from '../services/gamesRepository'
 
 const ALL_PLATFORMS = 'all'
+const ALL_STATUSES = 'all'
 
 const games = ref([])
 const loading = ref(false)
@@ -10,7 +11,9 @@ const error = ref(null)
 
 const search = ref('')
 const sortBy = ref('recent')
+// Фильтр платформ временно скрыт на главной (см. GamesToolbar), но логика жива
 const platform = ref(ALL_PLATFORMS)
+const statusFilter = ref(ALL_STATUSES)
 
 const sorters = {
   recent: (a, b) => String(b.completedAt).localeCompare(String(a.completedAt)),
@@ -48,6 +51,10 @@ const filteredGames = computed(() => {
   return publishedGames.value
     .filter((game) => {
       if (platform.value !== ALL_PLATFORMS && game.platform !== platform.value) return false
+      // Старые записи без статуса считаем пройденными (как дефолт в базе)
+      if (statusFilter.value !== ALL_STATUSES && (game.status || 'completed') !== statusFilter.value) {
+        return false
+      }
       if (!query) return true
 
       return [game.title, game.genre, game.verdict, game.review]
@@ -79,6 +86,7 @@ const stats = computed(() => {
 function resetFilters() {
   search.value = ''
   platform.value = ALL_PLATFORMS
+  statusFilter.value = ALL_STATUSES
   sortBy.value = 'recent'
 }
 
@@ -106,6 +114,7 @@ async function deleteGame(id) {
 export function useGames() {
   return {
     ALL_PLATFORMS,
+    ALL_STATUSES,
     games,
     loading,
     loaded,
@@ -114,6 +123,7 @@ export function useGames() {
     sortBy,
     platform,
     platforms,
+    statusFilter,
     filteredGames,
     allGames,
     stats,

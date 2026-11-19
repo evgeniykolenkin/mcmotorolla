@@ -4,8 +4,9 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import { useGames } from '../composables/useGames'
+import { STATUS_OPTIONS } from '../utils/format'
 
-const { search, sortBy, platform, platforms, ALL_PLATFORMS, resetFilters } = useGames()
+const { search, sortBy, statusFilter, ALL_STATUSES, resetFilters } = useGames()
 
 const sortOptions = [
   { label: 'Сначала новые', value: 'recent' },
@@ -13,13 +14,20 @@ const sortOptions = [
   { label: 'По названию', value: 'title' }
 ]
 
-const platformOptions = computed(() => [
-  { label: 'Все платформы', value: ALL_PLATFORMS },
-  ...platforms.value.map((item) => ({ label: item, value: item }))
-])
+// Фильтр платформ временно скрыт на главной: пока все игры на ПК, он только
+// занимает место. Вернуть — раскомментировать блок в шаблоне и деструктуризацию
+// platform/platforms/ALL_PLATFORMS ниже.
+// const { platform, platforms, ALL_PLATFORMS } = useGames()
+// const platformOptions = computed(() => [
+//   { label: 'Все платформы', value: ALL_PLATFORMS },
+//   ...platforms.value.map((item) => ({ label: item, value: item }))
+// ])
+
+// Первая опция — не статус, а «показать всё»: по ней фильтр выключен
+const statusOptions = [{ label: 'По прохождению', value: ALL_STATUSES }, ...STATUS_OPTIONS]
 
 const isFiltered = computed(
-  () => Boolean(search.value) || platform.value !== ALL_PLATFORMS || sortBy.value !== 'recent'
+  () => Boolean(search.value) || statusFilter.value !== ALL_STATUSES || sortBy.value !== 'recent'
 )
 </script>
 
@@ -33,16 +41,35 @@ const isFiltered = computed(
         class="toolbar__input"
         aria-label="Поиск по играм"
       />
-      <i v-if="search" class="pi pi-times toolbar__clear" @click="search = ''" />
+      <button
+        v-if="search"
+        type="button"
+        class="toolbar__clear"
+        aria-label="Очистить поиск"
+        v-tooltip.top="'Очистить поиск'"
+        @click="search = ''"
+      >
+        <i class="pi pi-times" />
+      </button>
     </span>
 
     <div class="toolbar__selects">
+      <!-- Фильтр платформ временно скрыт: вернуть вместе с platformOptions в скрипте
       <Select
         v-model="platform"
         :options="platformOptions"
         option-label="label"
         option-value="value"
         aria-label="Платформа"
+        class="toolbar__select"
+      />
+      -->
+      <Select
+        v-model="statusFilter"
+        :options="statusOptions"
+        option-label="label"
+        option-value="value"
+        aria-label="Фильтр по прохождению"
         class="toolbar__select"
       />
       <Select
@@ -60,6 +87,7 @@ const isFiltered = computed(
         text
         size="small"
         severity="secondary"
+        class="toolbar__reset"
         @click="resetFilters"
       />
     </div>
@@ -80,32 +108,52 @@ const isFiltered = computed(
   flex: 1 1 240px;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .toolbar__search > i.pi-search {
   position: absolute;
   left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--app-text-muted);
   font-size: 0.85rem;
+  line-height: 1;
   pointer-events: none;
 }
 
 .toolbar__input {
   width: 100%;
+  height: var(--control-h);
   padding-left: 34px;
-  padding-right: 32px;
+  padding-right: 34px;
 }
 
+/* Крестик — настоящая кнопка: одинаково ровно центрируется в любом браузере */
 .toolbar__clear {
   position: absolute;
-  right: 10px;
-  cursor: pointer;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
   color: var(--app-text-muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .toolbar__clear:hover {
   color: var(--app-text);
+  background: var(--app-accent-soft);
 }
 
 .toolbar__selects {
@@ -117,6 +165,24 @@ const isFiltered = computed(
 
 .toolbar__select {
   min-width: 172px;
+}
+
+/* Селект, инпут и кнопка в одну линию: одна высота, текст по центру */
+.toolbar :deep(.p-select) {
+  height: var(--control-h);
+  display: inline-flex;
+  align-items: center;
+}
+
+.toolbar :deep(.p-select-label) {
+  display: flex;
+  align-items: center;
+  line-height: 1;
+  padding-block: 0;
+}
+
+.toolbar__reset {
+  min-height: var(--control-h);
 }
 
 @media (max-width: 640px) {

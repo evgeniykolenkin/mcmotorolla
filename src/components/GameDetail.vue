@@ -5,7 +5,7 @@ import Tag from 'primevue/tag'
 import RatingBadge from './RatingBadge.vue'
 import MarkdownText from './MarkdownText.vue'
 import { useAuth } from '../composables/useAuth'
-import { formatDate, formatHours, ratingTone } from '../utils/format'
+import { STATUS_LABELS, formatDate, formatHours, ratingTone } from '../utils/format'
 
 const props = defineProps({
   game: { type: Object, required: true }
@@ -15,11 +15,7 @@ const emit = defineEmits(['edit', 'delete'])
 const { isOwner } = useAuth()
 
 const tone = computed(() => ratingTone(props.game.rating))
-const statusLabel = computed(
-  () =>
-    ({ completed: 'Пройдена', dropped: 'Брошена', playing: 'Прохожу сейчас' })[props.game.status] ??
-    'Пройдена'
-)
+const statusLabel = computed(() => STATUS_LABELS[props.game.status] ?? STATUS_LABELS.completed)
 const initials = computed(() =>
   props.game.title
     .replace(/[^\p{L}\p{N}\s]/gu, '')
@@ -193,11 +189,17 @@ const steamUrl = computed(() =>
 
 .detail__steam i {
   font-size: 0.72rem;
+  line-height: 1;
 }
 
 .detail__steam:hover {
   color: var(--app-accent);
   border-color: var(--app-accent);
+}
+
+/* Название магазина и иконка в одной строке без скачков высоты */
+.detail__steam span {
+  line-height: 1;
 }
 
 .detail__actions {
@@ -230,6 +232,13 @@ const steamUrl = computed(() =>
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.detail__meta-item i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .detail__verdict {

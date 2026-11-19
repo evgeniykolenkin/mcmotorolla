@@ -31,6 +31,20 @@ export const RATING_LABELS = {
 }
 
 /**
+ * Статусы прохождения: порядок — приоритет в фильтре и селекте формы
+ * (сначала пройденные, потом текущие, потом брошенные).
+ */
+export const STATUS_OPTIONS = [
+  { label: 'Пройдена', value: 'completed' },
+  { label: 'Прохожу сейчас', value: 'playing' },
+  { label: 'Брошена', value: 'dropped' }
+]
+
+export const STATUS_LABELS = Object.fromEntries(
+  STATUS_OPTIONS.map((option) => [option.value, option.label])
+)
+
+/**
  * Цветовая шкала оценки 1–10.
  * tone — суффикс для CSS-класса, label — текстовое пояснение.
  */
