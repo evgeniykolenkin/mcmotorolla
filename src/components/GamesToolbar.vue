@@ -4,14 +4,15 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import { useGames } from '../composables/useGames'
-import { STATUS_OPTIONS } from '../utils/format'
 
-const { search, sortBy, statusFilter, ALL_STATUSES, resetFilters } = useGames()
+const { search, sortBy, resetFilters } = useGames()
 
 const sortOptions = [
   { label: 'Сначала новые', value: 'recent' },
   { label: 'По оценке', value: 'rating' },
-  { label: 'По названию', value: 'title' }
+  { label: 'По названию', value: 'title' },
+  // Не фильтр, а порядок: пройденные → прохожу → брошенные
+  { label: 'По прохождению', value: 'status' }
 ]
 
 // Фильтр платформ временно скрыт на главной: пока все игры на ПК, он только
@@ -23,12 +24,8 @@ const sortOptions = [
 //   ...platforms.value.map((item) => ({ label: item, value: item }))
 // ])
 
-// Первая опция — не статус, а «показать всё»: по ней фильтр выключен
-const statusOptions = [{ label: 'По прохождению', value: ALL_STATUSES }, ...STATUS_OPTIONS]
-
-const isFiltered = computed(
-  () => Boolean(search.value) || statusFilter.value !== ALL_STATUSES || sortBy.value !== 'recent'
-)
+// «Сбросить» появляется, когда поиск или сортировка отличаются от дефолта
+const isFiltered = computed(() => Boolean(search.value) || sortBy.value !== 'recent')
 </script>
 
 <template>
@@ -64,14 +61,6 @@ const isFiltered = computed(
         class="toolbar__select"
       />
       -->
-      <Select
-        v-model="statusFilter"
-        :options="statusOptions"
-        option-label="label"
-        option-value="value"
-        aria-label="Фильтр по прохождению"
-        class="toolbar__select"
-      />
       <Select
         v-model="sortBy"
         :options="sortOptions"

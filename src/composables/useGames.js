@@ -1,8 +1,17 @@
 import { computed, ref } from 'vue'
 import { gamesRepository } from '../services/gamesRepository'
+import { STATUS_OPTIONS } from '../utils/format'
 
 const ALL_PLATFORMS = 'all'
-const ALL_STATUSES = 'all'
+
+/**
+ * Порядок статусов для сортировки «По прохождению»: пройдена → прохожу → брошена.
+ * Берём из STATUS_OPTIONS, чтобы порядок в селекте формы и в сортировке не разъезжался.
+ */
+const STATUS_ORDER = Object.fromEntries(
+  STATUS_OPTIONS.map((option, index) => [option.value, index])
+)
+const STATUS_FALLBACK = STATUS_OPTIONS.length
 
 const games = ref([])
 const loading = ref(false)
@@ -13,12 +22,19 @@ const search = ref('')
 const sortBy = ref('recent')
 // Фильтр платформ временно скрыт на главной (см. GamesToolbar), но логика жива
 const platform = ref(ALL_PLATFORMS)
-const statusFilter = ref(ALL_STATUSES)
+
+/** Старые записи без статуса считаем пройденными (как дефолт в базе). */
+function statusRank(game) {
+  return STATUS_ORDER[game.status || 'completed'] ?? STATUS_FALLBACK
+}
 
 const sorters = {
   recent: (a, b) => String(b.completedAt).localeCompare(String(a.completedAt)),
   rating: (a, b) => b.rating - a.rating || String(b.completedAt).localeCompare(String(a.completedAt)),
-  title: (a, b) => a.title.localeCompare(b.title, 'ru')
+  title: (a, b) => a.title.localeCompare(b.title, 'ru'),
+  // Группы по статусу, внутри группы — как в «Сначала новые»
+  status: (a, b) =>
+    statusRank(a) - statusRank(b) || String(b.completedAt).localeCompare(String(a.completedAt))
 }
 
 async function refresh() {
@@ -51,10 +67,6 @@ const filteredGames = computed(() => {
   return publishedGames.value
     .filter((game) => {
       if (platform.value !== ALL_PLATFORMS && game.platform !== platform.value) return false
-      // Старые записи без статуса считаем пройденными (как дефолт в базе)
-      if (statusFilter.value !== ALL_STATUSES && (game.status || 'completed') !== statusFilter.value) {
-        return false
-      }
       if (!query) return true
 
       return [game.title, game.genre, game.verdict, game.review]
@@ -86,7 +98,6 @@ const stats = computed(() => {
 function resetFilters() {
   search.value = ''
   platform.value = ALL_PLATFORMS
-  statusFilter.value = ALL_STATUSES
   sortBy.value = 'recent'
 }
 
@@ -114,7 +125,6 @@ async function deleteGame(id) {
 export function useGames() {
   return {
     ALL_PLATFORMS,
-    ALL_STATUSES,
     games,
     loading,
     loaded,
@@ -123,7 +133,6 @@ export function useGames() {
     sortBy,
     platform,
     platforms,
-    statusFilter,
     filteredGames,
     allGames,
     stats,
