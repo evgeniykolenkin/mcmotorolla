@@ -50,36 +50,37 @@ const isFiltered = computed(() => Boolean(search.value) || sortBy.value !== 'rec
       </button>
     </span>
 
-    <div class="toolbar__selects">
-      <!-- Фильтр платформ временно скрыт: вернуть вместе с platformOptions в скрипте
-      <Select
-        v-model="platform"
-        :options="platformOptions"
-        option-label="label"
-        option-value="value"
-        aria-label="Платформа"
-        class="toolbar__select"
-      />
-      -->
-      <Select
-        v-model="sortBy"
-        :options="sortOptions"
-        option-label="label"
-        option-value="value"
-        aria-label="Сортировка"
-        class="toolbar__select"
-      />
+    <span class="toolbar__reset-slot" :class="{ 'toolbar__reset-slot--idle': !isFiltered }">
       <Button
-        v-if="isFiltered"
         label="Сбросить"
         icon="pi pi-filter-slash"
         text
         size="small"
         severity="secondary"
         class="toolbar__reset"
+        :disabled="!isFiltered"
         @click="resetFilters"
       />
-    </div>
+    </span>
+
+    <!-- Фильтр платформ временно скрыт: вернуть вместе с platformOptions в скрипте
+    <Select
+      v-model="platform"
+      :options="platformOptions"
+      option-label="label"
+      option-value="value"
+      aria-label="Платформа"
+      class="toolbar__select"
+    />
+    -->
+    <Select
+      v-model="sortBy"
+      :options="sortOptions"
+      option-label="label"
+      option-value="value"
+      aria-label="Сортировка"
+      class="toolbar__select"
+    />
   </div>
 </template>
 
@@ -94,7 +95,9 @@ const isFiltered = computed(() => Boolean(search.value) || sortBy.value !== 'rec
 
 .toolbar__search {
   position: relative;
-  flex: 1 1 240px;
+  flex: 1 1 260px;
+  /* Поиск больше не растягивается на всю панель: контролы остаются компактными */
+  max-width: 460px;
   display: flex;
   align-items: center;
   min-width: 0;
@@ -145,14 +148,29 @@ const isFiltered = computed(() => Boolean(search.value) || sortBy.value !== 'rec
   background: var(--app-accent-soft);
 }
 
-.toolbar__selects {
+/*
+ * Место под «Сбросить» занято всегда: кнопка приглушается через visibility,
+ * поэтому селект не прыгает вправо-влево при вводе и сбросе поиска.
+ */
+.toolbar__reset-slot {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
+  /* Поиск слева, «Сбросить» + сортировка — справа; пустое место не копится в конце */
+  margin-inline-start: auto;
+}
+
+.toolbar__reset-slot--idle {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.toolbar__reset {
+  min-height: var(--control-h);
 }
 
 .toolbar__select {
+  flex: 0 0 auto;
   min-width: 172px;
 }
 
@@ -170,17 +188,14 @@ const isFiltered = computed(() => Boolean(search.value) || sortBy.value !== 'rec
   padding-block: 0;
 }
 
-.toolbar__reset {
-  min-height: var(--control-h);
-}
-
 @media (max-width: 640px) {
-  .toolbar__selects {
-    width: 100%;
+  .toolbar__search {
+    flex-basis: 100%;
+    max-width: none;
   }
 
   .toolbar__select {
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
   }
 }
