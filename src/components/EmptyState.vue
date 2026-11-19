@@ -28,7 +28,11 @@ defineProps({
 }
 
 .empty__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 2rem;
+  line-height: 1;
   color: var(--app-accent);
   opacity: 0.85;
 }

@@ -14,7 +14,7 @@ import RatingInput from './RatingInput.vue'
 import MarkdownText from './MarkdownText.vue'
 import { useGames } from '../composables/useGames'
 import { getSteamGame, searchSteamGames } from '../services/steamClient'
-import { fromIsoDate, toIsoDate } from '../utils/format'
+import { STATUS_OPTIONS, fromIsoDate, toIsoDate } from '../utils/format'
 
 const visible = defineModel({ type: Boolean, default: false })
 const props = defineProps({
@@ -32,12 +32,6 @@ const PLATFORM_OPTIONS = [
   'Nintendo Switch',
   'Steam Deck',
   'Мобильные'
-]
-
-const STATUS_OPTIONS = [
-  { label: 'Пройдена', value: 'completed' },
-  { label: 'Брошена', value: 'dropped' },
-  { label: 'Прохожу сейчас', value: 'playing' }
 ]
 
 const emptyForm = () => ({
@@ -65,14 +59,28 @@ const errors = reactive({ title: '', rating: '', releaseYear: '', general: '' })
 const mdMode = ref('edit')
 const mdHelpOpen = ref(false)
 const MD_HELP = [
-  { syntax: '**жирный**', result: 'жирный' },
-  { syntax: '*курсив*', result: 'курсив' },
-  { syntax: '## Подзаголовок', result: 'подзаголовок' },
-  { syntax: '- пункт', result: 'список' },
-  { syntax: '1. пункт', result: 'нумерованный список' },
-  { syntax: '> цитата', result: 'цитата' },
-  { syntax: '[текст](https://…)', result: 'ссылка' },
-  { syntax: '---', result: 'разделитель' }
+  { syntax: '# Заголовок', example: '# Заголовок', note: 'заголовок 1 уровня' },
+  { syntax: '## Подзаголовок', example: '## Подзаголовок', note: 'заголовок 2 уровня' },
+  { syntax: '### Мелкий', example: '### Мелкий заголовок', note: 'заголовок 3 уровня' },
+  { syntax: '**жирный**', example: '**жирный**', note: 'жирный текст' },
+  { syntax: '*курсив*', example: '*курсив*', note: 'курсив' },
+  { syntax: '`код`', example: '`код`', note: 'код в строке' },
+  { syntax: '- пункт', example: '- пункт\n- ещё пункт', note: 'маркированный список' },
+  { syntax: '1. пункт', example: '1. первый\n2. второй', note: 'нумерованный список' },
+  {
+    syntax: '  - вложенный',
+    example: '- пункт\n  - вложенный',
+    note: 'вложенность — отступ в 2 пробела'
+  },
+  { syntax: '> цитата', example: '> цитата', note: 'цитата' },
+  { syntax: '[текст](https://…)', example: '[текст](https://example.com)', note: 'ссылка' },
+  {
+    syntax: 'https://…',
+    example: 'https://example.com',
+    note: 'просто ссылка — станет кликабельной'
+  },
+  { syntax: '---', example: '---', note: 'разделитель' },
+  { syntax: '\\*', example: '\\*не курсив\\*', note: 'показать символ без разметки' }
 ]
 
 /** AutoComplete при выборе опции отдаёт объект — приводим к строке названия. */
@@ -485,14 +493,22 @@ async function submit() {
 
         <div v-if="mdHelpOpen" id="md-help" class="md-help">
           <p class="md-help__intro muted">
-            Markdown — простые символы для оформления. Пустая строка = новый абзац.
+            Markdown — простые символы для оформления. Пустая строка = новый абзац, одиночный
+            Enter = перенос строки.
           </p>
           <ul class="md-help__list">
-            <li v-for="item in MD_HELP" :key="item.syntax">
-              <code>{{ item.syntax }}</code>
-              <span class="muted">{{ item.result }}</span>
+            <li v-for="item in MD_HELP" :key="item.syntax" class="md-help__row">
+              <code class="md-help__syntax">{{ item.syntax }}</code>
+              <div class="md-help__result">
+                <MarkdownText :text="item.example" class="md-help__example" />
+                <span class="md-help__note muted">{{ item.note }}</span>
+              </div>
             </li>
           </ul>
+          <p class="md-help__note muted">
+            Не поддерживается: ~~зачёркивание~~, картинки ![](…) и HTML — они вырезаются
+            санитайзером.
+          </p>
         </div>
 
         <Textarea
@@ -510,8 +526,8 @@ async function submit() {
         </div>
 
         <small class="field__hint muted">
-          Поддерживается markdown: **жирный**, *курсив*, списки, ## подзаголовки, &gt; цитаты и
-          ссылки. Кнопка «?» — шпаргалка, «Предпросмотр» покажет результат.
+          Поддерживается markdown: **жирный**, *курсив*, `код`, # заголовки, списки, &gt; цитаты
+          и ссылки. Кнопка «?» — полная шпаргалка с примерами, «Предпросмотр» покажет результат.
         </small>
       </div>
 
@@ -617,6 +633,7 @@ async function submit() {
   color: var(--app-text-muted);
   font-size: 0.78rem;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -633,6 +650,10 @@ async function submit() {
 }
 
 .review-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
   padding: 4px 10px;
   border: 0;
   border-radius: 8px;
@@ -641,6 +662,7 @@ async function submit() {
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -664,28 +686,90 @@ async function submit() {
 }
 
 .md-help__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 6px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
   font-size: 0.78rem;
 }
 
-.md-help__list li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+.md-help__row {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(0, 1fr);
+  align-items: start;
+  gap: 8px 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--app-border);
 }
 
-.md-help__list code {
+.md-help__row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.md-help__syntax {
+  justify-self: start;
   padding: 1px 6px;
   border-radius: 6px;
   background: var(--app-surface);
   font-family: 'JetBrains Mono', 'Consolas', monospace;
-  white-space: nowrap;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.md-help__result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.md-help__note {
+  font-size: 0.72rem;
+}
+
+/* Примеры рендерит настоящий markdown — уменьшаем масштаб под шпаргалку */
+.md-help__example {
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.md-help__example :deep(p),
+.md-help__example :deep(ul),
+.md-help__example :deep(ol),
+.md-help__example :deep(blockquote),
+.md-help__example :deep(pre) {
+  margin: 0;
+}
+
+.md-help__example :deep(h1),
+.md-help__example :deep(h2),
+.md-help__example :deep(h3),
+.md-help__example :deep(h4) {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.md-help__example :deep(ul),
+.md-help__example :deep(ol) {
+  padding-left: 18px;
+}
+
+.md-help__example :deep(blockquote) {
+  padding: 2px 8px;
+}
+
+.md-help__example :deep(hr) {
+  margin: 4px 0;
+}
+
+@media (max-width: 520px) {
+  .md-help__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .review-preview {

@@ -6,7 +6,7 @@ const { stats } = useGames()
 
 const items = computed(() => [
   { icon: 'pi pi-check-circle', label: 'Пройдено игр', value: stats.value.count },
-  { icon: 'pi pi-star-fill', label: 'Средняя оценка', value: stats.value.average, suffix: '/10' },
+  { icon: 'pi pi-star-fill', label: 'Средняя оценка', value: stats.value.average, suffix: ' / 10' },
   { icon: 'pi pi-clock', label: 'Часов в играх', value: stats.value.hours }
 ])
 </script>
@@ -48,6 +48,7 @@ const items = computed(() => [
   background: var(--app-accent-soft);
   color: var(--app-accent);
   font-size: 1.05rem;
+  line-height: 1;
   flex: 0 0 auto;
 }
 

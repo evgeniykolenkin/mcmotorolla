@@ -57,12 +57,28 @@ function open(event) {
 </template>
 
 <style scoped>
+/* Текст и карандаш — одна flex-строка: иконка не «прыгает» по baseline */
+.editable-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  line-height: inherit;
+}
+
+.editable-text__value {
+  min-width: 0;
+}
+
 .editable-text__pencil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   width: 26px;
   height: 26px;
   padding: 0;
-  margin-left: 6px;
-  vertical-align: middle;
+  line-height: 1;
   opacity: 0.5;
   transition: opacity 0.15s ease;
 }

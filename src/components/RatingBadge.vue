@@ -17,7 +17,7 @@ const tone = computed(() => ratingTone(props.rating))
     :title="tone.label"
   >
     <strong class="rating-badge__value">{{ props.rating }}</strong>
-    <span class="rating-badge__max">/10</span>
+    <span class="rating-badge__max">/ 10</span>
   </span>
 </template>
 
@@ -25,7 +25,7 @@ const tone = computed(() => ratingTone(props.rating))
 .rating-badge {
   display: inline-flex;
   align-items: baseline;
-  gap: 1px;
+  gap: 0.3em;
   padding: 4px 9px;
   border-radius: 12px;
   border: 1px solid currentColor;

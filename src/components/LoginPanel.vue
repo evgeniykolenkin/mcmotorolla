@@ -121,6 +121,7 @@ async function submit() {
   border-radius: 13px;
   background: var(--app-accent-soft);
   color: var(--app-accent);
+  line-height: 1;
   flex: 0 0 auto;
 }
 

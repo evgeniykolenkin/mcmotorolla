@@ -11,7 +11,7 @@ const tone = computed(() => ratingTone(rating.value))
   <div class="rating-input">
     <div class="rating-input__head">
       <span class="rating-input__value" :class="`tone-${tone.tone}`">
-        {{ rating }}<small>/10</small>
+        {{ rating }}<small> / 10</small>
       </span>
       <span class="rating-input__label muted">{{ tone.label }}</span>
     </div>
