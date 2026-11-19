@@ -47,6 +47,7 @@ const tone = computed(() => ratingTone(props.rating))
 
 .size-sm {
   padding: 3px 7px;
+  gap: 0.22em;
 }
 .size-sm .rating-badge__value {
   font-size: 0.9rem;
@@ -55,6 +56,7 @@ const tone = computed(() => ratingTone(props.rating))
 .size-lg {
   padding: 8px 14px;
   border-radius: 16px;
+  gap: 0.42em;
 }
 .size-lg .rating-badge__value {
   font-size: 2rem;
