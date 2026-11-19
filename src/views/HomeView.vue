@@ -327,9 +327,9 @@ function onButtonReverted() {
         v-else-if="games.length"
         icon="pi pi-search"
         title="Ничего не нашлось"
-        text="Попробуй изменить запрос или сбросить фильтры."
+        text="Попробуй изменить запрос или сбросить поиск."
       >
-        <Button label="Сбросить фильтры" icon="pi pi-filter-slash" outlined @click="resetFilters" />
+        <Button label="Сбросить" icon="pi pi-filter-slash" outlined @click="resetFilters" />
       </EmptyState>
 
       <EmptyState
