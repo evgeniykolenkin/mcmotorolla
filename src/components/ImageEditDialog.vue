@@ -39,20 +39,29 @@ const error = ref('')
 const picked = ref(null)
 const urlDraft = ref('')
 
+// Положение картинки в превью должно меняться мгновенно, не дожидаясь ответа
+// Supabase: иначе кажется, что сегменты ничего не делают. Локальное значение
+// перекрывает сохранённое и сбрасывается при открытии окна.
+const localPosition = ref('')
+let positionRequest = 0
+
 const currentUrl = computed(() => getByPath(content.value, props.modelKey) ?? '')
 const previewUrl = computed(() => picked.value?.url || urlDraft.value.trim() || currentUrl.value)
 const busyAll = computed(() => busy.value || saving.value)
 
 const positionOptions = BG_POSITIONS
-const currentPosition = computed(() =>
-  props.positionKey ? normalizeBgPosition(getByPath(content.value, props.positionKey)) : 'center'
-)
+const currentPosition = computed(() => {
+  if (!props.positionKey) return 'center'
+  if (localPosition.value) return localPosition.value
+  return normalizeBgPosition(getByPath(content.value, props.positionKey))
+})
 const showPosition = computed(() => Boolean(props.positionKey) && Boolean(previewUrl.value))
 
 watch(visible, (open) => {
   if (open) {
     error.value = ''
     urlDraft.value = ''
+    localPosition.value = ''
   } else {
     revokePicked()
   }
@@ -142,19 +151,23 @@ function clearImage() {
   applyValue('')
 }
 
-/** Положение сохраняем сразу: картинка не перезагружается, меняется только object-position. */
+/**
+ * Положение сохраняем сразу: картинка не перезагружается, меняется только object-position.
+ * Превью обновляется мгновенно, запрос уходит в фон; при ошибке откатываемся назад.
+ */
 async function savePosition(position) {
   if (!props.positionKey || !position || position === currentPosition.value) return
 
-  busy.value = true
+  const previous = currentPosition.value
+  const request = ++positionRequest
+  localPosition.value = position
   error.value = ''
   try {
     await save({ [props.positionKey]: position })
     emit('saved', position)
   } catch (err) {
+    if (request === positionRequest) localPosition.value = previous
     error.value = err?.message ?? 'Не удалось сохранить положение картинки'
-  } finally {
-    busy.value = false
   }
 }
 </script>
@@ -193,11 +206,16 @@ async function savePosition(position) {
           option-value="value"
           :allow-empty="false"
           size="small"
-          :disabled="busyAll"
+          :disabled="busy"
           aria-label="Положение картинки"
           @update:model-value="savePosition"
         />
       </div>
+
+      <p v-if="showPosition" class="image-edit__hint muted">
+        Превью в пропорциях главной: видно, какой кусок кадра останется на экране.
+        Положение сохраняется сразу, кнопка «Сохранить» не нужна.
+      </p>
 
       <p v-if="hint" class="image-edit__hint muted">{{ hint }}</p>
 
@@ -281,7 +299,8 @@ async function savePosition(position) {
 }
 
 .image-edit__preview--wide {
-  aspect-ratio: 16 / 7;
+  /* Ближе к реальному герою на главной (≈2.7–3:1), иначе превью врёт об обрезке */
+  aspect-ratio: 21 / 8;
   border-radius: 16px;
 }
 
