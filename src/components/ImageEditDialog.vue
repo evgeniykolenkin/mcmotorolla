@@ -3,8 +3,9 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import SelectButton from 'primevue/selectbutton'
 import { useSiteContent } from '../composables/useSiteContent'
-import { getByPath } from '../config/content'
+import { BG_POSITIONS, getByPath, normalizeBgPosition } from '../config/content'
 import { compressImage, formatBytes } from '../utils/image'
 import { isUploadAvailable, removeImage, uploadImage } from '../services/mediaRepo'
 
@@ -23,7 +24,10 @@ const props = defineProps({
   maxWidth: { type: Number, default: 1920 },
   maxHeight: { type: Number, default: 1920 },
   quality: { type: Number, default: 0.82 },
-  shape: { type: String, default: 'wide' }
+  shape: { type: String, default: 'wide' },
+  // Ключ настройки, куда писать положение картинки (например 'hero.bgPosition').
+  // Если не передан — контрол не показывается (аватарке он не нужен).
+  positionKey: { type: String, default: '' }
 })
 const emit = defineEmits(['saved'])
 
@@ -38,6 +42,12 @@ const urlDraft = ref('')
 const currentUrl = computed(() => getByPath(content.value, props.modelKey) ?? '')
 const previewUrl = computed(() => picked.value?.url || urlDraft.value.trim() || currentUrl.value)
 const busyAll = computed(() => busy.value || saving.value)
+
+const positionOptions = BG_POSITIONS
+const currentPosition = computed(() =>
+  props.positionKey ? normalizeBgPosition(getByPath(content.value, props.positionKey)) : 'center'
+)
+const showPosition = computed(() => Boolean(props.positionKey) && Boolean(previewUrl.value))
 
 watch(visible, (open) => {
   if (open) {
@@ -131,6 +141,22 @@ function saveUrl() {
 function clearImage() {
   applyValue('')
 }
+
+/** Положение сохраняем сразу: картинка не перезагружается, меняется только object-position. */
+async function savePosition(position) {
+  if (!props.positionKey || !position || position === currentPosition.value) return
+
+  busy.value = true
+  error.value = ''
+  try {
+    await save({ [props.positionKey]: position })
+    emit('saved', position)
+  } catch (err) {
+    error.value = err?.message ?? 'Не удалось сохранить положение картинки'
+  } finally {
+    busy.value = false
+  }
+}
 </script>
 
 <template>
@@ -148,8 +174,29 @@ function clearImage() {
         class="image-edit__preview"
         :class="[`image-edit__preview--${shape}`, { 'image-edit__preview--empty': !previewUrl }]"
       >
-        <img v-if="previewUrl" :src="previewUrl" alt="" class="image-edit__image" />
+        <img
+          v-if="previewUrl"
+          :src="previewUrl"
+          alt=""
+          class="image-edit__image"
+          :style="props.positionKey ? { objectPosition: currentPosition } : undefined"
+        />
         <span v-else class="muted">Картинки пока нет</span>
+      </div>
+
+      <div v-if="showPosition" class="image-edit__position">
+        <span class="image-edit__label">Положение</span>
+        <SelectButton
+          :model-value="currentPosition"
+          :options="positionOptions"
+          option-label="label"
+          option-value="value"
+          :allow-empty="false"
+          size="small"
+          :disabled="busyAll"
+          aria-label="Положение картинки"
+          @update:model-value="savePosition"
+        />
       </div>
 
       <p v-if="hint" class="image-edit__hint muted">{{ hint }}</p>
@@ -256,6 +303,14 @@ function clearImage() {
   margin: 0;
   font-size: 0.82rem;
   line-height: 1.4;
+}
+
+.image-edit__position {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .image-edit__file {

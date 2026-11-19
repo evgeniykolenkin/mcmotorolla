@@ -4,19 +4,21 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
+import { useToast } from 'primevue/usetoast'
 import StatsBar from '../components/StatsBar.vue'
 import GamesToolbar from '../components/GamesToolbar.vue'
 import GameCard from '../components/GameCard.vue'
 import EmptyState from '../components/EmptyState.vue'
 import EditableText from '../components/EditableText.vue'
-import EditablePencil from '../components/EditablePencil.vue'
 import ImageEditDialog from '../components/ImageEditDialog.vue'
+import HeroButtonDialog from '../components/HeroButtonDialog.vue'
 import { useGames } from '../composables/useGames'
 import { useAuth } from '../composables/useAuth'
 import { useSiteContent } from '../composables/useSiteContent'
-import { site } from '../config/site'
+import { normalizeUrl } from '../config/content'
 
 const router = useRouter()
+const toast = useToast()
 const { games, filteredGames, loading, loaded, error, ensureLoaded, refresh, resetFilters } =
   useGames()
 const { isOwner } = useAuth()
@@ -26,6 +28,57 @@ const bgVisible = ref(false)
 const heroBg = computed(() => content.value.hero.bgUrl)
 // Картинка фона проявляется после загрузки: без «прыжка» с пустого фона
 const heroBgReady = ref(false)
+// Куда кадрировать фон: top | center | bottom
+const heroPosition = computed(() => content.value.hero.bgPosition)
+
+/**
+ * Кнопки главной: две базовые (primary/secondary) и добавленные владельцем.
+ * Пустая ссылка у базовой кнопки = владелец её скрыл: посетители не видят,
+ * владелец получает пунктирную заглушку, чтобы вернуть кнопку.
+ */
+const heroButtons = computed(() => {
+  const hero = content.value.hero
+  const list = [
+    {
+      kind: 'primary',
+      index: -1,
+      label: hero.primaryLabel,
+      url: normalizeUrl(hero.primaryUrl),
+      icon: hero.primaryIcon
+    },
+    {
+      kind: 'secondary',
+      index: -1,
+      label: hero.secondaryLabel,
+      url: normalizeUrl(hero.secondaryUrl),
+      icon: hero.secondaryIcon
+    }
+  ]
+
+  hero.extraButtons.forEach((button, index) => {
+    list.push({ kind: 'extra', index, ...button })
+  })
+
+  return list
+    .filter((button) => Boolean(button.url))
+    .map((button) => ({ ...button, icon: button.icon || undefined }))
+})
+
+const hiddenButtons = computed(() =>
+  [
+    { kind: 'primary', label: content.value.hero.primaryLabel, icon: content.value.hero.primaryIcon },
+    {
+      kind: 'secondary',
+      label: content.value.hero.secondaryLabel,
+      icon: content.value.hero.secondaryIcon
+    }
+  ].filter((button) => !normalizeUrl(content.value.hero[`${button.kind}Url`]))
+)
+
+const buttonDialog = ref(false)
+const editingKind = ref('extra')
+const editingIndex = ref(-1)
+const editingButton = ref(null)
 
 watch(heroBg, () => {
   heroBgReady.value = false
@@ -37,7 +90,30 @@ onMounted(() => {
 })
 
 function openSocial(url) {
+  if (!url) return
   window.open(url, '_blank', 'noopener')
+}
+
+/** null — добавление новой кнопки, объект — правка существующей. */
+function openButtonEditor(button = null) {
+  editingKind.value = button?.kind ?? 'extra'
+  editingIndex.value = button?.index ?? -1
+  editingButton.value = button
+    ? { label: button.label, url: button.url, icon: button.icon }
+    : null
+  buttonDialog.value = true
+}
+
+function onButtonSaved(label) {
+  toast.add({ severity: 'success', summary: 'Кнопка сохранена', detail: label, life: 2600 })
+}
+
+function onButtonRemoved(label) {
+  toast.add({ severity: 'info', summary: 'Кнопка удалена', detail: label, life: 2600 })
+}
+
+function onButtonReverted() {
+  toast.add({ severity: 'info', summary: 'Кнопка вернулась к исходной', life: 2600 })
 }
 </script>
 
@@ -54,6 +130,7 @@ function openSocial(url) {
           class="hero__bg"
           :class="{ 'hero__bg--ready': heroBgReady }"
           :src="heroBg"
+          :style="{ objectPosition: heroPosition }"
           alt=""
           decoding="async"
           @load="heroBgReady = true"
@@ -102,35 +179,71 @@ function openSocial(url) {
             />
 
             <div class="hero__actions">
-              <span v-if="site.twitchUrl" class="hero__action">
+              <span
+                v-for="button in heroButtons"
+                :key="`${button.kind}-${button.index}`"
+                class="hero__action"
+              >
                 <Button
-                  :label="content.hero.primaryLabel"
-                  icon="pi pi-twitch"
-                  @click="openSocial(site.twitchUrl)"
+                  :label="button.label"
+                  :icon="button.icon"
+                  :outlined="button.kind !== 'primary'"
+                  :severity="button.kind === 'primary' ? undefined : 'secondary'"
+                  @click="openSocial(button.url)"
                 />
-                <EditablePencil
+                <Button
                   v-if="isOwner"
-                  model-key="hero.primaryLabel"
-                  label="Подпись кнопки Twitch"
-                  :maxlength="40"
+                  icon="pi pi-pencil"
+                  text
+                  rounded
+                  size="small"
+                  severity="secondary"
+                  class="hero__action-edit"
+                  :aria-label="`Изменить кнопку «${button.label}»`"
+                  v-tooltip.top="'Подпись, ссылка, иконка'"
+                  @click="openButtonEditor(button)"
                 />
               </span>
 
-              <span v-if="site.telegramUrl" class="hero__action">
-                <Button
-                  :label="content.hero.secondaryLabel"
-                  icon="pi pi-telegram"
-                  outlined
-                  severity="secondary"
-                  @click="openSocial(site.telegramUrl)"
-                />
-                <EditablePencil
-                  v-if="isOwner"
-                  model-key="hero.secondaryLabel"
-                  label="Подпись кнопки Telegram"
-                  :maxlength="40"
-                />
-              </span>
+              <!-- Скрытая базовая кнопка: посетители её не видят, владелец может вернуть -->
+              <template v-if="isOwner">
+                <span
+                  v-for="button in hiddenButtons"
+                  :key="`hidden-${button.kind}`"
+                  class="hero__action"
+                >
+                  <Button
+                    :label="`«${button.label}» скрыта`"
+                    icon="pi pi-eye-slash"
+                    text
+                    size="small"
+                    severity="secondary"
+                    class="hero__add"
+                    v-tooltip.top="'Кнопка скрыта — нажми, чтобы вернуть'"
+                    @click="
+                      openButtonEditor({
+                        kind: button.kind,
+                        index: -1,
+                        label: button.label,
+                        url: '',
+                        icon: button.icon
+                      })
+                    "
+                  />
+                </span>
+              </template>
+
+              <Button
+                v-if="isOwner"
+                label="Кнопка"
+                icon="pi pi-plus"
+                text
+                size="small"
+                severity="secondary"
+                class="hero__add"
+                v-tooltip.top="'Добавить ещё одну кнопку'"
+                @click="openButtonEditor()"
+              />
 
               <Button
                 v-if="isOwner"
@@ -161,12 +274,24 @@ function openSocial(url) {
         v-if="isOwner"
         v-model="bgVisible"
         model-key="hero.bgUrl"
+        position-key="hero.bgPosition"
         title="Фон главной секции"
-        hint="Одно горизонтальное фото (лучше от 1920×1080). Сжимается в браузере до 1920 px в WebP, сверху фиксированный затемняющий слой — текст остаётся читаемым."
+        hint="Одно горизонтальное фото (лучше от 1920×1080). Сжимается в браузере до 1920 px в WebP, сверху фиксированный затемняющий слой — текст остаётся читаемым. Положение меняет, какая часть фото попадёт в кадр."
         folder="hero"
         :max-width="1920"
         :max-height="1920"
         shape="wide"
+      />
+
+      <HeroButtonDialog
+        v-if="isOwner"
+        v-model="buttonDialog"
+        :kind="editingKind"
+        :index="editingIndex"
+        :button="editingButton"
+        @saved="onButtonSaved"
+        @removed="onButtonRemoved"
+        @reverted="onButtonReverted"
       />
 
       <StatsBar />
@@ -285,7 +410,25 @@ function openSocial(url) {
 .hero__action {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 2px;
+  line-height: 1;
+}
+
+/* Карандаш у кнопки: виден всегда, но громче — при наведении на пару */
+.hero__action-edit {
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.hero__action:hover .hero__action-edit,
+.hero__action-edit:focus-visible {
+  opacity: 1;
+}
+
+/* «+ Кнопка»: пунктир намекает, что это добавление, а не ссылка */
+.hero__add {
+  border: 1px dashed var(--app-border);
 }
 
 .hero__bg-edit {

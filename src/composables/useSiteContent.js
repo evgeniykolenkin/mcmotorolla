@@ -47,12 +47,19 @@ function ensureLoaded() {
   return reload()
 }
 
-/** Сохраняет только переданные ключи, значения обрезаются по краям. */
+/**
+ * Сохраняет только переданные ключи: строки обрезаются по краям,
+ * массивы (добавленные кнопки в hero) уходят в базу как JSON.
+ */
 async function save(patch) {
   const cleaned = {}
 
   for (const [key, value] of Object.entries(patch)) {
-    cleaned[key] = value === null || value === undefined ? '' : String(value).trim()
+    if (Array.isArray(value) || (value && typeof value === 'object')) {
+      cleaned[key] = JSON.stringify(value)
+    } else {
+      cleaned[key] = value === null || value === undefined ? '' : String(value).trim()
+    }
   }
   if (!Object.keys(cleaned).length) return {}
 
