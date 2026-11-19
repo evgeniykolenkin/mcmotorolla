@@ -25,13 +25,18 @@ const { content } = useSiteContent()
 const editor = ref(null)
 const value = computed(() => getByPath(content.value, props.modelKey) ?? '')
 
+// Блочные теги нельзя превращать в inline-flex: заголовок и абзацы перестают
+// разбиваться на строки и «склеиваются» с соседними блоками (так поплыл hero).
+const BLOCK_TAGS = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'blockquote', 'li'])
+const isBlock = computed(() => BLOCK_TAGS.has(props.tag))
+
 function open(event) {
   editor.value?.open(event)
 }
 </script>
 
 <template>
-  <component :is="tag" class="editable-text">
+  <component :is="tag" class="editable-text" :class="{ 'editable-text--block': isBlock }">
     <span class="editable-text__value">{{ value }}</span>
     <Button
       v-if="isOwner"
@@ -57,13 +62,19 @@ function open(event) {
 </template>
 
 <style scoped>
-/* Текст и карандаш — одна flex-строка: иконка не «прыгает» по baseline */
+/* Карандаш и текст — одна flex-строка: иконка не «прыгает» по baseline */
 .editable-text {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   max-width: 100%;
   line-height: inherit;
+}
+
+/* Блочные теги остаются блоками: flex только внутри, поток страницы не ломается */
+.editable-text--block {
+  display: flex;
+  width: fit-content;
 }
 
 .editable-text__value {
