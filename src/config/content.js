@@ -121,6 +121,9 @@ const KEEP_DEFAULT_WHEN_EMPTY = new Set([
 /** Ключи, которые в базе лежат строкой JSON, а в приложении — массивом. */
 const JSON_KEYS = new Set(['hero.extraButtons'])
 
+/** Иконки базовых кнопок тоже приходят из базы — проверяем по белому списку. */
+const ICON_KEYS = new Set(['hero.primaryIcon', 'hero.secondaryIcon'])
+
 /** 'hero.title' → значение во вложенном объекте (или undefined). */
 export function getByPath(source, path) {
   return String(path)
@@ -170,6 +173,10 @@ export function applyOverrides(overrides = {}, defaults = contentDefaults) {
     if (!value && KEEP_DEFAULT_WHEN_EMPTY.has(key)) continue
     if (key === 'hero.bgPosition') {
       setByPath(result, key, normalizeBgPosition(value))
+      continue
+    }
+    if (ICON_KEYS.has(key)) {
+      setByPath(result, key, ICON_VALUES.has(value) ? value : FALLBACK_ICON)
       continue
     }
 
