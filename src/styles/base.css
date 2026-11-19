@@ -238,6 +238,42 @@ p {
   margin-bottom: 4px;
 }
 
+/* «- [ ]» и «- [x]»: квадратик вместо маркера списка */
+.markdown-body .md-task {
+  position: relative;
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 7px;
+  border: 1.5px solid var(--app-border);
+  border-radius: 4px;
+  background: var(--app-surface-2);
+  vertical-align: -2px;
+}
+
+.markdown-body .md-task--done {
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+}
+
+.markdown-body .md-task--done::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(42deg);
+}
+
+/* ++подчёркнутый++ — цвет линии как у акцента, чтобы не сливалось с ссылками */
+.markdown-body u {
+  text-decoration-color: var(--app-accent);
+  text-underline-offset: 3px;
+}
+
 .markdown-body blockquote {
   margin: 0 0 12px;
   padding: 8px 14px;
