@@ -62,6 +62,11 @@ const MD_HELP = [
   { syntax: '# Заголовок', example: '# Заголовок', note: 'заголовок 1 уровня' },
   { syntax: '## Подзаголовок', example: '## Подзаголовок', note: 'заголовок 2 уровня' },
   { syntax: '### Мелкий', example: '### Мелкий заголовок', note: 'заголовок 3 уровня' },
+  {
+    syntax: '#### … ######',
+    example: '#### Четвёртый\n##### Пятый\n###### Шестой',
+    note: 'уровни 4–6 — ещё мельче'
+  },
   { syntax: '**жирный**', example: '**жирный**', note: 'жирный текст' },
   { syntax: '*курсив*', example: '*курсив*', note: 'курсив' },
   { syntax: '~~зачёркнутый~~', example: '~~зачёркнутый~~', note: 'зачёркивание' },
@@ -503,6 +508,10 @@ async function submit() {
             Markdown — простые символы для оформления. Пустая строка = новый абзац, одиночный
             Enter = перенос строки.
           </p>
+          <p class="md-help__intro muted">
+            Заголовков шесть уровней — по числу решёток в начале строки: чем больше решёток,
+            тем мельче шрифт. # — самый крупный, ## — меньше, ### — ещё меньше и так до ######.
+          </p>
           <ul class="md-help__list">
             <li v-for="item in MD_HELP" :key="item.syntax" class="md-help__row">
               <code class="md-help__syntax">{{ item.syntax }}</code>
@@ -512,9 +521,6 @@ async function submit() {
               </div>
             </li>
           </ul>
-          <p class="md-help__note muted">
-            Не поддерживается: картинки ![](…) и сырой HTML — они вырезаются санитайзером.
-          </p>
         </div>
 
         <Textarea
@@ -736,7 +742,8 @@ async function submit() {
   font-size: 0.72rem;
 }
 
-/* Примеры рендерит настоящий markdown — уменьшаем масштаб под шпаргалку */
+/* Примеры рендерит настоящий markdown — уменьшаем масштаб под шпаргалку,
+   но сохраняем шаг между уровнями заголовков */
 .md-help__example {
   min-width: 0;
   line-height: 1.3;
@@ -753,9 +760,34 @@ async function submit() {
 .md-help__example :deep(h1),
 .md-help__example :deep(h2),
 .md-help__example :deep(h3),
-.md-help__example :deep(h4) {
+.md-help__example :deep(h4),
+.md-help__example :deep(h5),
+.md-help__example :deep(h6) {
   margin: 0;
-  font-size: 0.82rem;
+}
+
+.md-help__example :deep(h1) {
+  font-size: 0.95rem;
+}
+
+.md-help__example :deep(h2) {
+  font-size: 0.9rem;
+}
+
+.md-help__example :deep(h3) {
+  font-size: 0.85rem;
+}
+
+.md-help__example :deep(h4) {
+  font-size: 0.8rem;
+}
+
+.md-help__example :deep(h5) {
+  font-size: 0.76rem;
+}
+
+.md-help__example :deep(h6) {
+  font-size: 0.72rem;
 }
 
 .md-help__example :deep(ul),
