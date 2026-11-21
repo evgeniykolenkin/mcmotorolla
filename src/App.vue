@@ -1,15 +1,26 @@
 <script setup>
+import { watch } from 'vue'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
 import AppHeader from './components/AppHeader.vue'
 import EditableText from './components/EditableText.vue'
 import { useSiteContent } from './composables/useSiteContent'
+import { useAuth } from './composables/useAuth'
+import { useGames } from './composables/useGames'
 import { site, socials } from './config/site'
 
 // Текст подвала правится на сайте; ensureLoaded идемпотентен и уже вызывается
 // при старте приложения, здесь — страховка для прямых ссылок на другие разделы.
 const { ensureLoaded } = useSiteContent()
 ensureLoaded()
+
+const { isOwner } = useAuth()
+const { refresh: refreshGames } = useGames()
+
+// RLS отдаёт гостю только опубликованные игры, владельцу — ещё и черновики.
+// После входа/выхода список надо перезапросить, иначе в памяти остаётся набор
+// от прошлой сессии: черновики появлялись только после перезагрузки страницы.
+watch(isOwner, () => refreshGames())
 </script>
 
 <template>

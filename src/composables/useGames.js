@@ -37,16 +37,27 @@ const sorters = {
     statusRank(a) - statusRank(b) || String(b.completedAt).localeCompare(String(a.completedAt))
 }
 
+// Номер последнего запроса: ответы, пришедшие после более свежего, игнорируем —
+// иначе медленный анонимный список мог перетереть список, загруженный после входа.
+let requestId = 0
+
 async function refresh() {
+  const id = ++requestId
   loading.value = true
   error.value = null
   try {
-    games.value = await gamesRepository.list()
+    const items = await gamesRepository.list()
+
+    // Пока запрос летел, мог начаться новый (например, вход в аккаунт).
+    if (id !== requestId) return
+
+    games.value = items
     loaded.value = true
   } catch (err) {
+    if (id !== requestId) return
     error.value = err?.message ?? 'Не удалось загрузить игры'
   } finally {
-    loading.value = false
+    if (id === requestId) loading.value = false
   }
 }
 

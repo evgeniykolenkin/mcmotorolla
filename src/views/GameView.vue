@@ -16,7 +16,7 @@ const router = useRouter()
 const confirm = useConfirm()
 const toast = useToast()
 
-const { findGameBySlug, loading, loaded, ensureLoaded, deleteGame } = useGames()
+const { findGameBySlug, loading, loaded, error, ensureLoaded, refresh, deleteGame } = useGames()
 const { isOwner } = useAuth()
 
 const slug = computed(() => String(route.params.slug ?? ''))
@@ -27,12 +27,35 @@ const editing = ref(null)
 onMounted(ensureLoaded)
 
 watch(
-  game,
-  (value) => {
-    document.title = value ? `${value.title} · mcmotorolla` : 'Игра не найдена · mcmotorolla'
+  [game, error, loading, loaded],
+  ([value, loadError, isLoading, isLoaded]) => {
+    if (value) document.title = `${value.title} · mcmotorolla`
+    else if (isLoading && !isLoaded) document.title = 'Загрузка игры · mcmotorolla'
+    else if (loadError) document.title = 'Игры не загрузились · mcmotorolla'
+    else document.title = 'Игра недоступна · mcmotorolla'
   },
   { immediate: true }
 )
+
+// Vue Router хранит предыдущий адрес в history.state.back, поэтому страница игры
+// помнит, откуда пришли: из панели админа вернёмся в панель, с главной — к списку.
+function previousPath() {
+  return String(router.options.history.state.back ?? '')
+}
+
+function backRoute() {
+  return previousPath().startsWith('/admin') ? { name: 'admin' } : { name: 'home' }
+}
+
+function goBack() {
+  // Если история внутри сайта есть, это обычный шаг назад: не плодим записи
+  // и сохраняем позицию скролла. Прямой заход по ссылке ведёт на главную.
+  if (previousPath().startsWith('/')) {
+    router.back()
+    return
+  }
+  router.push({ name: 'home' })
+}
 
 function openEdit() {
   editing.value = game.value
@@ -61,7 +84,8 @@ function askDelete() {
     accept: async () => {
       await deleteGame(target.id)
       toast.add({ severity: 'success', summary: 'Игра удалена', detail: target.title, life: 2600 })
-      router.push({ name: 'home' })
+      // Заменяем удалённую страницу, чтобы «Назад» не возвращал на неё.
+      router.replace(backRoute())
     }
   })
 }
@@ -71,13 +95,13 @@ function askDelete() {
   <div class="page">
     <div class="container stack">
       <Button
-        label="Все игры"
+        label="Назад"
         icon="pi pi-arrow-left"
         text
         size="small"
         severity="secondary"
         class="back"
-        @click="router.push({ name: 'home' })"
+        @click="goBack"
       />
 
       <div v-if="loading && !loaded" class="detail-skeleton">
@@ -98,12 +122,21 @@ function askDelete() {
       />
 
       <EmptyState
+        v-else-if="error"
+        icon="pi pi-exclamation-triangle"
+        title="Не удалось загрузить игры"
+        :text="error"
+      >
+        <Button label="Повторить" icon="pi pi-refresh" outlined @click="refresh" />
+      </EmptyState>
+
+      <EmptyState
         v-else
         icon="pi pi-question-circle"
-        title="Игра не найдена"
-        text="Возможно, запись удалили или ссылка устарела."
+        title="Игра недоступна"
+        text="Возможно, запись удалили, ссылка устарела или игру сняли с публикации."
       >
-        <Button label="На главную" icon="pi pi-arrow-left" outlined @click="router.push({ name: 'home' })" />
+        <Button label="Ко всем играм" icon="pi pi-arrow-left" outlined @click="router.push({ name: 'home' })" />
       </EmptyState>
     </div>
 
