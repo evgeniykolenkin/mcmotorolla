@@ -1,11 +1,9 @@
 <script setup>
-import { computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import Button from 'primevue/button'
 import { useGames } from '../composables/useGames'
 
-const { search, sortBy, resetFilters } = useGames()
+const { search, sortBy } = useGames()
 
 const sortOptions = [
   { label: 'Сначала новые', value: 'recent' },
@@ -23,9 +21,6 @@ const sortOptions = [
 //   { label: 'Все платформы', value: ALL_PLATFORMS },
 //   ...platforms.value.map((item) => ({ label: item, value: item }))
 // ])
-
-// «Сбросить» появляется, когда поиск или сортировка отличаются от дефолта
-const isFiltered = computed(() => Boolean(search.value) || sortBy.value !== 'recent')
 </script>
 
 <template>
@@ -48,19 +43,6 @@ const isFiltered = computed(() => Boolean(search.value) || sortBy.value !== 'rec
       >
         <i class="pi pi-times" />
       </button>
-    </span>
-
-    <span class="toolbar__reset-slot" :class="{ 'toolbar__reset-slot--idle': !isFiltered }">
-      <Button
-        label="Сбросить"
-        icon="pi pi-filter-slash"
-        text
-        size="small"
-        severity="secondary"
-        class="toolbar__reset"
-        :disabled="!isFiltered"
-        @click="resetFilters"
-      />
     </span>
 
     <!-- Фильтр платформ временно скрыт: вернуть вместе с platformOptions в скрипте
@@ -148,33 +130,14 @@ const isFiltered = computed(() => Boolean(search.value) || sortBy.value !== 'rec
   background: var(--app-accent-soft);
 }
 
-/*
- * Место под «Сбросить» занято всегда: кнопка приглушается через visibility,
- * поэтому селект не прыгает вправо-влево при вводе и сбросе поиска.
- */
-.toolbar__reset-slot {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-  /* Поиск слева, «Сбросить» + сортировка — справа; пустое место не копится в конце */
-  margin-inline-start: auto;
-}
-
-.toolbar__reset-slot--idle {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.toolbar__reset {
-  min-height: var(--control-h);
-}
-
+/* Поиск слева, сортировка — справа: пустое место не копится в конце */
 .toolbar__select {
   flex: 0 0 auto;
   min-width: 172px;
+  margin-inline-start: auto;
 }
 
-/* Селект, инпут и кнопка в одну линию: одна высота, текст по центру */
+/* Селект и инпут в одну линию: одна высота, текст по центру */
 .toolbar :deep(.p-select) {
   height: var(--control-h);
   display: inline-flex;
@@ -197,6 +160,7 @@ const isFiltered = computed(() => Boolean(search.value) || sortBy.value !== 'rec
   .toolbar__select {
     flex: 1 1 auto;
     min-width: 0;
+    margin-inline-start: 0;
   }
 }
 </style>
