@@ -79,12 +79,11 @@ const steamUrl = computed(() =>
             @click="emit('edit', game)"
           />
           <Button
+            label="Удалить"
             icon="pi pi-trash"
             size="small"
-            text
+            outlined
             severity="danger"
-            aria-label="Удалить игру"
-            v-tooltip.bottom="'Удалить'"
             @click="emit('delete', game)"
           />
         </div>
@@ -157,6 +156,7 @@ const steamUrl = computed(() =>
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+  flex-wrap: wrap;
 }
 
 .detail__headline {
