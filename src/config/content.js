@@ -15,8 +15,6 @@ export const contentDefaults = {
     avatarUrl: ''
   },
   hero: {
-    eyebrow: 'дневник пройденных игр',
-    eyebrowIcon: 'pi pi-star-fill',
     title: site.tagline,
     subtitle: site.subtitle,
     primaryLabel: 'Смотреть на Twitch',
@@ -54,27 +52,6 @@ export const BUTTON_ICONS = [
   { label: 'Внешняя ссылка', value: 'pi pi-external-link' }
 ]
 
-/**
- * Иконки надписи над заголовком — декоративные, поэтому набор свой:
- * соцсети здесь ни к чему, зато есть звезда (дефолт), кубок, корона и т.п.
- */
-export const EYEBROW_ICONS = [
-  { label: 'Звезда', value: 'pi pi-star-fill' },
-  { label: 'Звезда (контур)', value: 'pi pi-star' },
-  { label: 'Сердце', value: 'pi pi-heart-fill' },
-  { label: 'Сердце (контур)', value: 'pi pi-heart' },
-  { label: 'Молния', value: 'pi pi-bolt' },
-  { label: 'Искры', value: 'pi pi-sparkles' },
-  { label: 'Кубок', value: 'pi pi-trophy' },
-  { label: 'Корона', value: 'pi pi-crown' },
-  { label: 'Закладка', value: 'pi pi-bookmark-fill' },
-  { label: 'Флаг', value: 'pi pi-flag-fill' },
-  { label: 'Компас', value: 'pi pi-compass' },
-  { label: 'Глобус', value: 'pi pi-globe' },
-  { label: 'Палитра', value: 'pi pi-palette' },
-  { label: 'Щит', value: 'pi pi-shield' }
-]
-
 export const MAX_EXTRA_BUTTONS = 4
 
 /**
@@ -88,8 +65,8 @@ export const BG_POSITIONS = [
   { label: 'Низ', value: '50% 100%' }
 ]
 
-// Белый список общий: иконка кнопки и иконка надписи проверяются одинаково
-const ICON_VALUES = new Set([...BUTTON_ICONS, ...EYEBROW_ICONS].map((icon) => icon.value))
+// Белый список иконок кнопок: всё, что пришло из базы, проверяется по нему
+const ICON_VALUES = new Set(BUTTON_ICONS.map((icon) => icon.value))
 // Старые записи в базе: до раунда 5 позиция хранилась как top | center | bottom
 const POSITION_PRESETS = { top: '50% 0%', center: '50% 50%', bottom: '50% 100%' }
 const POSITION_PATTERN = /^(\d{1,3})%\s+(\d{1,3})%$/
@@ -147,8 +124,6 @@ export function normalizeBgPosition(value) {
  * «картинки нет» / «кнопку скрыть».
  */
 const KEEP_DEFAULT_WHEN_EMPTY = new Set([
-  'hero.eyebrow',
-  'hero.eyebrowIcon',
   'hero.title',
   'hero.subtitle',
   'hero.primaryLabel',
@@ -162,11 +137,16 @@ const KEEP_DEFAULT_WHEN_EMPTY = new Set([
 const JSON_KEYS = new Set(['hero.extraButtons'])
 
 /**
+ * Ключи, убранные из интерфейса: старые правки могли остаться в базе,
+ * но в дерево контента они больше не попадают.
+ */
+const DEPRECATED_KEYS = new Set(['hero.eyebrow', 'hero.eyebrowIcon'])
+
+/**
  * Иконки приходят из базы — проверяем по белому списку и подставляем дефолт
- * конкретного ключа (у надписи — звезда, у кнопок — внешняя ссылка).
+ * конкретного ключа (у кнопок — внешняя ссылка).
  */
 const ICON_FALLBACKS = {
-  'hero.eyebrowIcon': 'pi pi-star-fill',
   'hero.primaryIcon': FALLBACK_ICON,
   'hero.secondaryIcon': FALLBACK_ICON
 }
@@ -206,6 +186,9 @@ export function applyOverrides(overrides = {}, defaults = contentDefaults) {
   const result = JSON.parse(JSON.stringify(defaults))
 
   for (const [key, rawValue] of Object.entries(overrides ?? {})) {
+    // Убранные из интерфейса ключи просто игнорируем
+    if (DEPRECATED_KEYS.has(key)) continue
+
     // Массивы (добавленные кнопки) хранятся строкой JSON: битый JSON — не повод падать
     if (JSON_KEYS.has(key)) {
       try {

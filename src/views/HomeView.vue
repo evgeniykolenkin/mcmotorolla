@@ -10,7 +10,6 @@ import GamesToolbar from '../components/GamesToolbar.vue'
 import GameCard from '../components/GameCard.vue'
 import EmptyState from '../components/EmptyState.vue'
 import EditableText from '../components/EditableText.vue'
-import EditableIcon from '../components/EditableIcon.vue'
 import ImageEditDialog from '../components/ImageEditDialog.vue'
 import HeroButtonDialog from '../components/HeroButtonDialog.vue'
 import { useGames } from '../composables/useGames'
@@ -141,7 +140,6 @@ function onButtonReverted() {
         <div class="hero__content">
           <!-- Пока site_settings грузится, вместо дефолтных текстов — скелетоны -->
           <div v-if="contentPending" class="hero__skeleton" aria-hidden="true">
-            <Skeleton width="132px" height="12px" border-radius="999px" />
             <Skeleton width="min(420px, 92%)" height="38px" border-radius="12px" />
             <Skeleton width="min(280px, 62%)" height="38px" border-radius="12px" />
             <Skeleton width="min(520px, 100%)" height="13px" border-radius="6px" />
@@ -153,19 +151,6 @@ function onButtonReverted() {
           </div>
 
           <template v-else>
-            <p class="hero__eyebrow">
-              <EditableIcon
-                model-key="hero.eyebrowIcon"
-                label="Иконка надписи"
-                :preview-text="content.hero.eyebrow"
-              />
-              <EditableText
-                model-key="hero.eyebrow"
-                label="Надпись над заголовком"
-                :maxlength="40"
-              />
-            </p>
-
             <EditableText
               tag="h1"
               class="hero__title"
@@ -461,21 +446,11 @@ function onButtonReverted() {
   line-height: 1;
 }
 
-.hero__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--app-accent);
-}
-
 .hero__title {
   font-size: clamp(1.9rem, 4.4vw, 3rem);
   font-weight: 800;
+  /* Крупный заголовок: строки ближе, чем у обычных заголовков */
+  line-height: 1.1;
   margin-bottom: 12px;
   max-width: 18ch;
 }
