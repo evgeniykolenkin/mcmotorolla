@@ -1,97 +1,104 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useConfirm } from 'primevue/useconfirm'
-import { useToast } from 'primevue/usetoast'
-import Button from 'primevue/button'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
-import Tag from 'primevue/tag'
-import Message from 'primevue/message'
-import LoginPanel from '../components/LoginPanel.vue'
-import GameFormDialog from '../components/GameFormDialog.vue'
-import RatingBadge from '../components/RatingBadge.vue'
-import EmptyState from '../components/EmptyState.vue'
-import { useAuth } from '../composables/useAuth'
-import { useGames } from '../composables/useGames'
-import { formatDate, formatHours } from '../utils/format'
-import { isLocalBackend } from '../config/site'
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useConfirm } from "primevue/useconfirm";
+import { useToast } from "primevue/usetoast";
+import Button from "primevue/button";
+import DataTable from "primevue/datatable";
+import Column from "primevue/column";
+import Tag from "primevue/tag";
+import Message from "primevue/message";
+import LoginPanel from "../components/LoginPanel.vue";
+import GameFormDialog from "../components/GameFormDialog.vue";
+import RatingBadge from "../components/RatingBadge.vue";
+import EmptyState from "../components/EmptyState.vue";
+import { useAuth } from "../composables/useAuth";
+import { useGames } from "../composables/useGames";
+import { formatDate, formatHours } from "../utils/format";
+import { isLocalBackend } from "../config/site";
 
-const route = useRoute()
-const router = useRouter()
-const confirm = useConfirm()
-const toast = useToast()
+const route = useRoute();
+const router = useRouter();
+const confirm = useConfirm();
+const toast = useToast();
 
-const { isOwner, signOut } = useAuth()
-const { allGames, loading, stats, ensureLoaded, deleteGame } = useGames()
+const { isOwner, signOut } = useAuth();
+const { allGames, loading, stats, ensureLoaded, deleteGame } = useGames();
 
-const formVisible = ref(false)
-const editing = ref(null)
+const formVisible = ref(false);
+const editing = ref(null);
 
-const draftCount = computed(() => allGames.value.filter((game) => !game.published).length)
+const draftCount = computed(
+  () => allGames.value.filter((game) => !game.published).length,
+);
 
 const confirmAction = {
-  rejectProps: { label: 'Отмена', severity: 'secondary', outlined: true }
-}
+  rejectProps: { label: "Отмена", severity: "secondary", outlined: true },
+};
 
-onMounted(ensureLoaded)
+onMounted(ensureLoaded);
 
 watch(
   () => [isOwner.value, route.query.create],
   ([owner, create]) => {
-    if (owner && create === '1') {
-      openCreate()
-      router.replace({ name: 'admin' })
+    if (owner && create === "1") {
+      openCreate();
+      router.replace({ name: "admin" });
     }
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 function openCreate() {
-  editing.value = null
-  formVisible.value = true
+  editing.value = null;
+  formVisible.value = true;
 }
 
 function openEdit(game) {
-  editing.value = game
-  formVisible.value = true
+  editing.value = game;
+  formVisible.value = true;
 }
 
 function onSaved(saved, wasEdit) {
   toast.add({
-    severity: 'success',
-    summary: wasEdit ? 'Изменения сохранены' : 'Игра добавлена',
+    severity: "success",
+    summary: wasEdit ? "Изменения сохранены" : "Игра добавлена",
     detail: saved.title,
-    life: 2600
-  })
+    life: 2600,
+  });
 }
 
 function onLogin() {
   toast.add({
-    severity: 'success',
-    summary: 'Вход выполнен',
-    detail: 'Теперь можно добавлять и редактировать игры',
-    life: 2600
-  })
+    severity: "success",
+    summary: "Вход выполнен",
+    detail: "Теперь можно добавлять и редактировать игры",
+    life: 2600,
+  });
 }
 
 async function doSignOut() {
-  await signOut()
-  toast.add({ severity: 'secondary', summary: 'Вы вышли', life: 2000 })
+  await signOut();
+  toast.add({ severity: "secondary", summary: "Вы вышли", life: 2000 });
 }
 
 function askDelete(game) {
   confirm.require({
     ...confirmAction,
-    header: 'Удалить игру?',
+    header: "Удалить игру?",
     message: `«${game.title}» исчезнет из дневника. Действие необратимо.`,
-    icon: 'pi pi-exclamation-triangle',
-    acceptProps: { label: 'Удалить', severity: 'danger' },
+    icon: "pi pi-exclamation-triangle",
+    acceptProps: { label: "Удалить", severity: "danger" },
     accept: async () => {
-      await deleteGame(game.id)
-      toast.add({ severity: 'success', summary: 'Игра удалена', detail: game.title, life: 2600 })
-    }
-  })
+      await deleteGame(game.id);
+      toast.add({
+        severity: "success",
+        summary: "Игра удалена",
+        detail: game.title,
+        life: 2600,
+      });
+    },
+  });
 }
 </script>
 
@@ -100,10 +107,11 @@ function askDelete(game) {
     <div class="container stack">
       <header class="admin-head">
         <div>
-          <p class="admin-head__eyebrow">панель владельца</p>
-          <h1 class="admin-head__title">Дневник игр</h1>
+          <p class="admin-head__eyebrow">панель админа</p>
+          <h1 class="admin-head__title">Список игр</h1>
           <p class="muted admin-head__subtitle">
-            Здесь добавляются записи о пройденных играх. Посетителям эта страница не нужна.
+            Здесь добавляются записи об играх. Посетителям эта страница не
+            нужна.
           </p>
         </div>
 
@@ -123,12 +131,13 @@ function askDelete(game) {
 
       <template v-else>
         <Message v-if="isLocalBackend" severity="secondary" :closable="false">
-          Локальный режим: записи хранятся только в этом браузере (localStorage) и не видны
-          посетителям. Задайте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY, чтобы включить
-          Supabase.
+          Локальный режим: записи хранятся только в этом браузере (localStorage)
+          и не видны посетителям. Задайте VITE_SUPABASE_URL и
+          VITE_SUPABASE_ANON_KEY, чтобы включить Supabase.
         </Message>
         <Message v-else severity="success" :closable="false">
-          Записи хранятся в Supabase и сразу видны всем посетителям. Черновики видите только вы.
+          Записи хранятся в Supabase и сразу видны всем посетителям. Черновики
+          видите только вы.
         </Message>
 
         <div class="mini-stats">
@@ -169,7 +178,8 @@ function askDelete(game) {
                   {{ data.title }}
                 </RouterLink>
                 <span class="cell-game__meta muted">
-                  {{ data.platform }}<template v-if="data.genre"> · {{ data.genre }}</template>
+                  {{ data.platform
+                  }}<template v-if="data.genre"> · {{ data.genre }}</template>
                 </span>
               </div>
             </template>
@@ -185,14 +195,20 @@ function askDelete(game) {
             <template #body="{ data }">
               <div class="cell-date">
                 <span>{{ formatDate(data.completedAt) }}</span>
-                <span v-if="data.hours" class="muted">{{ formatHours(data.hours) }}</span>
+                <span v-if="data.hours" class="muted">{{
+                  formatHours(data.hours)
+                }}</span>
               </div>
             </template>
           </Column>
 
           <Column header="Статус" style="width: 132px">
             <template #body="{ data }">
-              <Tag v-if="data.published" value="Опубликовано" severity="success" />
+              <Tag
+                v-if="data.published"
+                value="Опубликовано"
+                severity="success"
+              />
               <Tag v-else value="Черновик" severity="warn" />
             </template>
           </Column>
@@ -233,11 +249,15 @@ function askDelete(game) {
         >
           <Button label="Добавить игру" icon="pi pi-plus" @click="openCreate" />
         </EmptyState>
-
       </template>
     </div>
 
-    <GameFormDialog v-if="isOwner" v-model="formVisible" :game="editing" @saved="onSaved" />
+    <GameFormDialog
+      v-if="isOwner"
+      v-model="formVisible"
+      :game="editing"
+      @saved="onSaved"
+    />
   </div>
 </template>
 
