@@ -122,10 +122,14 @@ function measureCrop() {
   const image = cropImage.value
   if (!image || !image.naturalWidth || !image.naturalHeight) return
 
-  const rect = image.getBoundingClientRect()
-  if (!rect.width || !rect.height) return
+  // offsetWidth/offsetHeight — размеры вёрстки: они не зависят от transform, а диалог
+  // при открытии масштабируется анимацией PrimeVue (scale .93). С getBoundingClientRect
+  // рамка замерялась в сжатом окне и оставалась меньше и левее нужного места.
+  const width = image.offsetWidth
+  const height = image.offsetHeight
+  if (!width || !height) return
 
-  const scale = Math.min(rect.width / image.naturalWidth, rect.height / image.naturalHeight)
+  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight)
   const pictureW = image.naturalWidth * scale
   const pictureH = image.naturalHeight * scale
 
@@ -138,8 +142,8 @@ function measureCrop() {
     pictureH,
     cropW,
     cropH,
-    offsetX: (rect.width - pictureW) / 2,
-    offsetY: (rect.height - pictureH) / 2,
+    offsetX: (width - pictureW) / 2,
+    offsetY: (height - pictureH) / 2,
     rangeX: pictureW - cropW,
     rangeY: pictureH - cropH
   }
@@ -394,6 +398,7 @@ function savePosition(position) {
   >
     <div class="image-edit">
       <div
+        v-if="!showPosition"
         class="image-edit__preview"
         :class="[`image-edit__preview--${shape}`, { 'image-edit__preview--empty': !previewUrl }]"
       >
@@ -478,10 +483,11 @@ function savePosition(position) {
           @click="pickFile"
         />
         <Button
+          v-if="canSave"
           label="Сохранить"
           icon="pi pi-check"
           :loading="busyAll"
-          :disabled="busyAll || !canSave"
+          :disabled="busyAll"
           @click="saveImage"
         />
         <small v-if="picked" class="muted">{{ formatBytes(picked.size) }}</small>
@@ -590,8 +596,11 @@ function savePosition(position) {
 
 .image-edit__crop-image {
   display: block;
+  /* Картинка во всю ширину панели: рамка кадра совпадает с краями, без полей по бокам */
   width: 100%;
-  height: 168px;
+  height: auto;
+  /* Высокие фото не раздувают диалог — для них остаются поля, но рамка по центру */
+  max-height: 320px;
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -601,6 +610,7 @@ function savePosition(position) {
 .image-edit__crop-frame {
   position: absolute;
   display: block;
+  box-sizing: border-box;
   border: 2px solid var(--app-accent);
   border-radius: 10px;
   box-shadow: 0 0 0 9999px rgba(8, 6, 16, 0.62);
@@ -666,10 +676,10 @@ function savePosition(position) {
   flex-wrap: wrap;
 }
 
-/* На узком экране диалог не должен раздуваться: рамке хватает 132px */
+/* На узком экране диалог не должен раздуваться: картинке хватает 190px по высоте */
 @media (max-width: 420px) {
   .image-edit__crop-image {
-    height: 132px;
+    max-height: 190px;
   }
 }
 </style>
