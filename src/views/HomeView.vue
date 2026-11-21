@@ -19,8 +19,18 @@ import { normalizeUrl } from '../config/content'
 
 const router = useRouter()
 const toast = useToast()
-const { games, filteredGames, loading, loaded, error, ensureLoaded, refresh, resetFilters } =
-  useGames()
+const {
+  games,
+  filteredGames,
+  stats,
+  search,
+  loading,
+  loaded,
+  error,
+  ensureLoaded,
+  refresh,
+  resetFilters
+} = useGames()
 const { isOwner } = useAuth()
 const { content, ensureLoaded: ensureContentLoaded, pending: contentPending } = useSiteContent()
 
@@ -74,6 +84,14 @@ const hiddenButtons = computed(() =>
     }
   ].filter((button) => !normalizeUrl(content.value.hero[`${button.kind}Url`]))
 )
+
+// В шапке списка — общее число игр; при поиске показываем, сколько из них нашлось
+const resultsTitle = computed(() => {
+  if (loading.value && !loaded.value) return 'Загружаем игры…'
+
+  const total = `Всего игр: ${stats.value.count}`
+  return search.value.trim() ? `${total} · найдено: ${filteredGames.value.length}` : total
+})
 
 const buttonDialog = ref(false)
 const editingKind = ref('extra')
@@ -286,7 +304,7 @@ function onButtonReverted() {
 
       <div class="results-head">
         <h2 class="section-title">
-          {{ loading && !loaded ? 'Загружаем игры…' : `Записей: ${filteredGames.length}` }}
+          {{ resultsTitle }}
         </h2>
       </div>
 
@@ -316,7 +334,7 @@ function onButtonReverted() {
       <EmptyState
         v-else
         icon="pi pi-inbox"
-        title="Записей пока нет"
+        title="Игр пока нет"
         :text="
           isOwner
             ? 'Добавь первую игру через панель владельца.'

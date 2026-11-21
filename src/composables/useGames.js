@@ -93,7 +93,10 @@ const allGames = computed(() =>
 
 const stats = computed(() => {
   const items = publishedGames.value
+  // count — все опубликованные игры: на главной это «Всего игр», в админке «опубликовано»
   const count = items.length
+  // Старые записи без статуса считаем пройденными — как в statusRank/statusTone
+  const completed = items.filter((game) => (game.status || 'completed') === 'completed').length
   const hours = items.reduce((sum, game) => sum + (Number(game.hours) || 0), 0)
   const average = count
     ? items.reduce((sum, game) => sum + (Number(game.rating) || 0), 0) / count
@@ -101,6 +104,7 @@ const stats = computed(() => {
 
   return {
     count,
+    completed,
     hours: Math.round(hours),
     average: count ? average.toFixed(1).replace('.', ',') : '—'
   }

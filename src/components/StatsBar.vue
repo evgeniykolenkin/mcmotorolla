@@ -5,7 +5,7 @@ import { useGames } from '../composables/useGames'
 const { stats } = useGames()
 
 const items = computed(() => [
-  { icon: 'pi pi-check-circle', label: 'Пройдено игр', value: stats.value.count },
+  { icon: 'pi pi-check-circle', label: 'Пройдено игр', value: stats.value.completed },
   { icon: 'pi pi-star-fill', label: 'Средняя оценка', value: stats.value.average, suffix: ' / 10' },
   { icon: 'pi pi-clock', label: 'Часов в играх', value: stats.value.hours }
 ])
