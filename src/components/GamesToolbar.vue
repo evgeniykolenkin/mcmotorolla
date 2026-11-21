@@ -130,6 +130,12 @@ const sortOptions = [
   background: var(--app-accent-soft);
 }
 
+/* Крестик — иконка внутри кнопки: тот же размер, что у кнопок PrimeVue */
+.toolbar__clear i {
+  font-size: var(--app-btn-icon);
+  line-height: 1;
+}
+
 /* Поиск слева, сортировка — справа: пустое место не копится в конце */
 .toolbar__select {
   flex: 0 0 auto;

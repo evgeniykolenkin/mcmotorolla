@@ -17,6 +17,8 @@
   --app-shadow: 0 18px 40px -28px rgba(30, 12, 70, 0.45);
   /* Единая высота инпутов, селектов и кнопок в одну линию */
   --control-h: 42px;
+  /* Иконки внутри кнопок: чуть крупнее подписи, иначе в мелких кнопках теряются */
+  --app-btn-icon: 1.1rem;
 
   --tone-great: #35c46b;
   --tone-good: #8bc34a;
@@ -143,6 +145,19 @@ p {
   align-items: center;
   justify-content: center;
   line-height: 1;
+}
+
+/* Размер иконок именно в кнопках: декоративные иконки не трогаем.
+   PrimeVue задаёт иконке размер через `.p-button-sm/-lg .p-button-icon`,
+   поэтому для мелких кнопок перебиваем селектором точнее — иначе правило
+   темы выигрывает по каскаду. Крупные кнопки не трогаем: у них свой размер. */
+.p-button .p-button-icon {
+  font-size: var(--app-btn-icon);
+}
+
+/* В мелких кнопках подпись 0.875rem: 1.1rem рядом с ней выглядит перевесом */
+.p-button.p-button-sm .p-button-icon {
+  font-size: 1rem;
 }
 
 .p-select .p-select-dropdown {

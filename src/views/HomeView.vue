@@ -10,6 +10,7 @@ import GamesToolbar from '../components/GamesToolbar.vue'
 import GameCard from '../components/GameCard.vue'
 import EmptyState from '../components/EmptyState.vue'
 import EditableText from '../components/EditableText.vue'
+import EditableIcon from '../components/EditableIcon.vue'
 import ImageEditDialog from '../components/ImageEditDialog.vue'
 import HeroButtonDialog from '../components/HeroButtonDialog.vue'
 import { useGames } from '../composables/useGames'
@@ -153,7 +154,11 @@ function onButtonReverted() {
 
           <template v-else>
             <p class="hero__eyebrow">
-              <i class="pi pi-star-fill" />
+              <EditableIcon
+                model-key="hero.eyebrowIcon"
+                label="Иконка надписи"
+                :preview-text="content.hero.eyebrow"
+              />
               <EditableText
                 model-key="hero.eyebrow"
                 label="Надпись над заголовком"
@@ -448,6 +453,12 @@ function onButtonReverted() {
 .hero__bg-edit:hover {
   color: var(--app-text);
   border-color: var(--app-accent);
+}
+
+/* Иконка в кнопке — по общему размеру кнопочных иконок */
+.hero__bg-edit i {
+  font-size: var(--app-btn-icon);
+  line-height: 1;
 }
 
 .hero__eyebrow {

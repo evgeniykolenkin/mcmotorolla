@@ -16,6 +16,7 @@ export const contentDefaults = {
   },
   hero: {
     eyebrow: 'дневник пройденных игр',
+    eyebrowIcon: 'pi pi-star-fill',
     title: site.tagline,
     subtitle: site.subtitle,
     primaryLabel: 'Смотреть на Twitch',
@@ -53,6 +54,27 @@ export const BUTTON_ICONS = [
   { label: 'Внешняя ссылка', value: 'pi pi-external-link' }
 ]
 
+/**
+ * Иконки надписи над заголовком — декоративные, поэтому набор свой:
+ * соцсети здесь ни к чему, зато есть звезда (дефолт), кубок, корона и т.п.
+ */
+export const EYEBROW_ICONS = [
+  { label: 'Звезда', value: 'pi pi-star-fill' },
+  { label: 'Звезда (контур)', value: 'pi pi-star' },
+  { label: 'Сердце', value: 'pi pi-heart-fill' },
+  { label: 'Сердце (контур)', value: 'pi pi-heart' },
+  { label: 'Молния', value: 'pi pi-bolt' },
+  { label: 'Искры', value: 'pi pi-sparkles' },
+  { label: 'Кубок', value: 'pi pi-trophy' },
+  { label: 'Корона', value: 'pi pi-crown' },
+  { label: 'Закладка', value: 'pi pi-bookmark-fill' },
+  { label: 'Флаг', value: 'pi pi-flag-fill' },
+  { label: 'Компас', value: 'pi pi-compass' },
+  { label: 'Глобус', value: 'pi pi-globe' },
+  { label: 'Палитра', value: 'pi pi-palette' },
+  { label: 'Щит', value: 'pi pi-shield' }
+]
+
 export const MAX_EXTRA_BUTTONS = 4
 
 /**
@@ -66,7 +88,8 @@ export const BG_POSITIONS = [
   { label: 'Низ', value: '50% 100%' }
 ]
 
-const ICON_VALUES = new Set(BUTTON_ICONS.map((icon) => icon.value))
+// Белый список общий: иконка кнопки и иконка надписи проверяются одинаково
+const ICON_VALUES = new Set([...BUTTON_ICONS, ...EYEBROW_ICONS].map((icon) => icon.value))
 // Старые записи в базе: до раунда 5 позиция хранилась как top | center | bottom
 const POSITION_PRESETS = { top: '50% 0%', center: '50% 50%', bottom: '50% 100%' }
 const POSITION_PATTERN = /^(\d{1,3})%\s+(\d{1,3})%$/
@@ -125,6 +148,7 @@ export function normalizeBgPosition(value) {
  */
 const KEEP_DEFAULT_WHEN_EMPTY = new Set([
   'hero.eyebrow',
+  'hero.eyebrowIcon',
   'hero.title',
   'hero.subtitle',
   'hero.primaryLabel',
@@ -137,8 +161,15 @@ const KEEP_DEFAULT_WHEN_EMPTY = new Set([
 /** Ключи, которые в базе лежат строкой JSON, а в приложении — массивом. */
 const JSON_KEYS = new Set(['hero.extraButtons'])
 
-/** Иконки базовых кнопок тоже приходят из базы — проверяем по белому списку. */
-const ICON_KEYS = new Set(['hero.primaryIcon', 'hero.secondaryIcon'])
+/**
+ * Иконки приходят из базы — проверяем по белому списку и подставляем дефолт
+ * конкретного ключа (у надписи — звезда, у кнопок — внешняя ссылка).
+ */
+const ICON_FALLBACKS = {
+  'hero.eyebrowIcon': 'pi pi-star-fill',
+  'hero.primaryIcon': FALLBACK_ICON,
+  'hero.secondaryIcon': FALLBACK_ICON
+}
 
 /** 'hero.title' → значение во вложенном объекте (или undefined). */
 export function getByPath(source, path) {
@@ -191,8 +222,9 @@ export function applyOverrides(overrides = {}, defaults = contentDefaults) {
       setByPath(result, key, normalizeBgPosition(value))
       continue
     }
-    if (ICON_KEYS.has(key)) {
-      setByPath(result, key, ICON_VALUES.has(value) ? value : FALLBACK_ICON)
+    if (key in ICON_FALLBACKS) {
+      const fallback = ICON_FALLBACKS[key]
+      setByPath(result, key, ICON_VALUES.has(value) ? value : fallback)
       continue
     }
 
