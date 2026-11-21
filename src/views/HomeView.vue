@@ -244,15 +244,6 @@ function onButtonReverted() {
                 v-tooltip.top="'Добавить ещё одну кнопку'"
                 @click="openButtonEditor()"
               />
-
-              <Button
-                v-if="isOwner"
-                label="Панель владельца"
-                icon="pi pi-cog"
-                outlined
-                severity="secondary"
-                @click="router.push({ name: 'admin' })"
-              />
             </div>
           </template>
         </div>

@@ -73,7 +73,7 @@ const themeLabel = computed(() => (isDark.value ? 'Светлая тема' : '�
         <Button
           v-if="isOwner"
           icon="pi pi-cog"
-          label="Панель"
+          label="Панель админа"
           text
           size="small"
           severity="secondary"
