@@ -15,7 +15,7 @@ import HeroButtonDialog from '../components/HeroButtonDialog.vue'
 import { useGames } from '../composables/useGames'
 import { useAuth } from '../composables/useAuth'
 import { useSiteContent } from '../composables/useSiteContent'
-import { normalizeUrl } from '../config/content'
+import { buttonAppearance, normalizeUrl } from '../config/content'
 
 const router = useRouter()
 const toast = useToast()
@@ -42,9 +42,8 @@ const heroBgReady = ref(false)
 const heroPosition = computed(() => content.value.hero.bgPosition)
 
 /**
- * Кнопки главной: две базовые (primary/secondary) и добавленные владельцем.
- * Пустая ссылка у базовой кнопки = владелец её скрыл: посетители не видят,
- * владелец получает пунктирную заглушку, чтобы вернуть кнопку.
+ * Кнопки главной: две первые (primary/secondary) и добавленные владельцем.
+ * Для владельца все кнопки равны: любую можно изменить или удалить.
  */
 const heroButtons = computed(() => {
   const hero = content.value.hero
@@ -54,14 +53,16 @@ const heroButtons = computed(() => {
       index: -1,
       label: hero.primaryLabel,
       url: normalizeUrl(hero.primaryUrl),
-      icon: hero.primaryIcon
+      icon: hero.primaryIcon,
+      color: hero.primaryColor
     },
     {
       kind: 'secondary',
       index: -1,
       label: hero.secondaryLabel,
       url: normalizeUrl(hero.secondaryUrl),
-      icon: hero.secondaryIcon
+      icon: hero.secondaryIcon,
+      color: hero.secondaryColor
     }
   ]
 
@@ -71,19 +72,12 @@ const heroButtons = computed(() => {
 
   return list
     .filter((button) => Boolean(button.url))
-    .map((button) => ({ ...button, icon: button.icon || undefined }))
+    .map((button) => ({
+      ...button,
+      icon: button.icon || undefined,
+      appearance: buttonAppearance(button.color)
+    }))
 })
-
-const hiddenButtons = computed(() =>
-  [
-    { kind: 'primary', label: content.value.hero.primaryLabel, icon: content.value.hero.primaryIcon },
-    {
-      kind: 'secondary',
-      label: content.value.hero.secondaryLabel,
-      icon: content.value.hero.secondaryIcon
-    }
-  ].filter((button) => !normalizeUrl(content.value.hero[`${button.kind}Url`]))
-)
 
 // В шапке списка — общее число игр; при поиске показываем, сколько из них нашлось
 const resultsTitle = computed(() => {
@@ -117,7 +111,7 @@ function openButtonEditor(button = null) {
   editingKind.value = button?.kind ?? 'extra'
   editingIndex.value = button?.index ?? -1
   editingButton.value = button
-    ? { label: button.label, url: button.url, icon: button.icon }
+    ? { label: button.label, url: button.url, icon: button.icon, color: button.color }
     : null
   buttonDialog.value = true
 }
@@ -128,10 +122,6 @@ function onButtonSaved(label) {
 
 function onButtonRemoved(label) {
   toast.add({ severity: 'info', summary: 'Кнопка удалена', detail: label, life: 2600 })
-}
-
-function onButtonReverted() {
-  toast.add({ severity: 'info', summary: 'Кнопка вернулась к исходной', life: 2600 })
 }
 </script>
 
@@ -195,8 +185,8 @@ function onButtonReverted() {
                 <Button
                   :label="button.label"
                   :icon="button.icon"
-                  :outlined="button.kind !== 'primary'"
-                  :severity="button.kind === 'primary' ? undefined : 'secondary'"
+                  :outlined="button.appearance.outlined"
+                  :severity="button.appearance.severity"
                   @click="openSocial(button.url)"
                 />
                 <Button
@@ -208,38 +198,10 @@ function onButtonReverted() {
                   severity="secondary"
                   class="hero__action-edit"
                   :aria-label="`Изменить кнопку «${button.label}»`"
-                  v-tooltip.top="'Подпись, ссылка, иконка'"
+                  v-tooltip.top="'Подпись, ссылка, иконка, цвет'"
                   @click="openButtonEditor(button)"
                 />
               </span>
-
-              <!-- Скрытая базовая кнопка: посетители её не видят, владелец может вернуть -->
-              <template v-if="isOwner">
-                <span
-                  v-for="button in hiddenButtons"
-                  :key="`hidden-${button.kind}`"
-                  class="hero__action"
-                >
-                  <Button
-                    :label="`«${button.label}» скрыта`"
-                    icon="pi pi-eye-slash"
-                    text
-                    size="small"
-                    severity="secondary"
-                    class="hero__add"
-                    v-tooltip.top="'Кнопка скрыта — нажми, чтобы вернуть'"
-                    @click="
-                      openButtonEditor({
-                        kind: button.kind,
-                        index: -1,
-                        label: button.label,
-                        url: '',
-                        icon: button.icon
-                      })
-                    "
-                  />
-                </span>
-              </template>
 
               <Button
                 v-if="isOwner"
@@ -290,7 +252,6 @@ function onButtonReverted() {
         :button="editingButton"
         @saved="onButtonSaved"
         @removed="onButtonRemoved"
-        @reverted="onButtonReverted"
       />
 
       <StatsBar />
@@ -428,9 +389,29 @@ function onButtonReverted() {
   opacity: 1;
 }
 
-/* «+ Кнопка»: пунктир намекает, что это добавление, а не ссылка */
-.hero__add {
-  border: 1px dashed var(--app-border);
+/* «+ Кнопка»: заметный пунктирный акцент, чтобы её не теряли среди ссылок */
+.hero__add.p-button {
+  border: 1px dashed color-mix(in srgb, var(--app-accent) 62%, var(--app-border));
+  background: var(--app-accent-soft);
+  color: var(--app-text);
+  font-weight: 600;
+}
+
+.hero__add.p-button :deep(.p-button-icon) {
+  color: var(--app-accent);
+}
+
+.hero__add.p-button:not(:disabled):hover {
+  border-style: solid;
+  border-color: var(--app-accent);
+  background: color-mix(in srgb, var(--app-accent) 22%, transparent);
+  color: var(--app-text);
+}
+
+.hero__add.p-button:not(:disabled):active {
+  border-color: var(--app-accent);
+  background: color-mix(in srgb, var(--app-accent) 30%, transparent);
+  color: var(--app-text);
 }
 
 .hero__bg-edit {

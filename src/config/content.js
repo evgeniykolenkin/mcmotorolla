@@ -20,10 +20,12 @@ export const contentDefaults = {
     primaryLabel: 'Смотреть на Twitch',
     primaryUrl: site.twitchUrl,
     primaryIcon: 'pi pi-twitch',
+    primaryColor: 'accent',
     secondaryLabel: 'Телеграм-канал',
     secondaryUrl: site.telegramUrl,
     secondaryIcon: 'pi pi-telegram',
-    // Добавленные владельцем кнопки: JSON-массив [{ label, url, icon }]
+    secondaryColor: 'outline',
+    // Добавленные владельцем кнопки: JSON-массив [{ label, url, icon, color }]
     extraButtons: [],
     bgUrl: '',
     // Куда кадрировать фон главной: CSS object-position в процентах
@@ -52,6 +54,29 @@ export const BUTTON_ICONS = [
   { label: 'Внешняя ссылка', value: 'pi pi-external-link' }
 ]
 
+/**
+ * Цвета кнопок hero. accent — фирменный фиолетовый без явного severity,
+ * outline — прозрачная кнопка с рамкой (прежний вид добавленных кнопок),
+ * остальные значения совпадают с severity PrimeVue.
+ */
+export const BUTTON_COLORS = [
+  { label: 'Фиолетовый', value: 'accent', swatch: '#9146ff' },
+  { label: 'Синий', value: 'info', swatch: '#0ea5e9' },
+  { label: 'Зелёный', value: 'success', swatch: '#22c55e' },
+  { label: 'Оранжевый', value: 'warn', swatch: '#f97316' },
+  { label: 'Красный', value: 'danger', swatch: '#ef4444' },
+  {
+    label: 'Контрастный',
+    value: 'contrast',
+    swatch: 'linear-gradient(135deg, #0f172a 0 50%, #f8fafc 50% 100%)'
+  },
+  {
+    label: 'Прозрачный',
+    value: 'outline',
+    swatch: 'repeating-linear-gradient(45deg, transparent 0 3px, var(--app-border) 3px 4px)'
+  }
+]
+
 export const MAX_EXTRA_BUTTONS = 4
 
 /**
@@ -67,6 +92,8 @@ export const BG_POSITIONS = [
 
 // Белый список иконок кнопок: всё, что пришло из базы, проверяется по нему
 const ICON_VALUES = new Set(BUTTON_ICONS.map((icon) => icon.value))
+// Белый список цветов: произвольные значения из базы не попадут в severity
+const COLOR_VALUES = new Set(BUTTON_COLORS.map((color) => color.value))
 // Старые записи в базе: до раунда 5 позиция хранилась как top | center | bottom
 const POSITION_PRESETS = { top: '50% 0%', center: '50% 50%', bottom: '50% 100%' }
 const POSITION_PATTERN = /^(\d{1,3})%\s+(\d{1,3})%$/
@@ -84,6 +111,23 @@ export function normalizeUrl(value) {
   }
 }
 
+/** Цвет кнопки из белого списка; неизвестное значение заменяется на fallback. */
+export function normalizeButtonColor(value, fallback = 'accent') {
+  const color = String(value ?? '').trim()
+  return COLOR_VALUES.has(color) ? color : fallback
+}
+
+/**
+ * Настройки PrimeVue Button для цвета hero-кнопки.
+ * accent — фирменный фиолетовый (severity не задаём), outline — прозрачная.
+ */
+export function buttonAppearance(value) {
+  const color = normalizeButtonColor(value)
+  if (color === 'outline') return { severity: 'secondary', outlined: true }
+  if (color === 'accent') return { severity: undefined, outlined: false }
+  return { severity: color, outlined: false }
+}
+
 function normalizeExtraButton(raw) {
   if (!raw || typeof raw !== 'object') return null
 
@@ -92,7 +136,9 @@ function normalizeExtraButton(raw) {
   if (!label || !url) return null
 
   const icon = ICON_VALUES.has(raw.icon) ? raw.icon : FALLBACK_ICON
-  return { label, url, icon }
+  // Старые кнопки без color остаются прозрачными, как были до выбора цвета
+  const color = normalizeButtonColor(raw.color, 'outline')
+  return { label, url, icon, color }
 }
 
 /** Массив добавленных кнопок из JSON: чистим мусор и ограничиваем количество. */
@@ -149,6 +195,12 @@ const DEPRECATED_KEYS = new Set(['hero.eyebrow', 'hero.eyebrowIcon'])
 const ICON_FALLBACKS = {
   'hero.primaryIcon': FALLBACK_ICON,
   'hero.secondaryIcon': FALLBACK_ICON
+}
+
+/** Цвета базовых кнопок: пустое или неизвестное значение возвращает прежний вид. */
+const COLOR_FALLBACKS = {
+  'hero.primaryColor': 'accent',
+  'hero.secondaryColor': 'outline'
 }
 
 /** 'hero.title' → значение во вложенном объекте (или undefined). */
@@ -208,6 +260,10 @@ export function applyOverrides(overrides = {}, defaults = contentDefaults) {
     if (key in ICON_FALLBACKS) {
       const fallback = ICON_FALLBACKS[key]
       setByPath(result, key, ICON_VALUES.has(value) ? value : fallback)
+      continue
+    }
+    if (key in COLOR_FALLBACKS) {
+      setByPath(result, key, normalizeButtonColor(value, COLOR_FALLBACKS[key]))
       continue
     }
 

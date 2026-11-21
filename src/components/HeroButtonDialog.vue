@@ -5,52 +5,59 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import { useSiteContent } from '../composables/useSiteContent'
-import { BUTTON_ICONS, MAX_EXTRA_BUTTONS, normalizeUrl } from '../config/content'
+import {
+  BUTTON_COLORS,
+  BUTTON_ICONS,
+  MAX_EXTRA_BUTTONS,
+  buttonAppearance,
+  normalizeButtonColor,
+  normalizeUrl
+} from '../config/content'
 
 /**
- * Редактор одной кнопки в главной секции: подпись, ссылка, иконка.
+ * Редактор одной кнопки в главной секции: подпись, ссылка, иконка и цвет.
  *
- * kind = 'primary' | 'secondary' — две базовые кнопки (ссылки по умолчанию
- * из src/config/site.js), kind = 'extra' — добавленные владельцем
- * (хранятся JSON-массивом в настройке hero.extraButtons).
+ * kind = 'primary' | 'secondary' — первые две кнопки (хранятся отдельными
+ * ключами), kind = 'extra' — добавленные владельцем (JSON-массив в настройке
+ * hero.extraButtons). Для владельца все кнопки равны: любую можно изменить
+ * или удалить.
  */
 const visible = defineModel({ type: Boolean, default: false })
 const props = defineProps({
   kind: { type: String, default: 'extra' },
   // Индекс добавленной кнопки; -1 — создаём новую
   index: { type: Number, default: -1 },
-  // Текущие значения открываемой кнопки ({ label, url, icon }) или null
+  // Текущие значения открываемой кнопки ({ label, url, icon, color }) или null
   button: { type: Object, default: null }
 })
-const emit = defineEmits(['saved', 'removed', 'reverted'])
+const emit = defineEmits(['saved', 'removed'])
 
-const { content, overrides, save, reset, saving } = useSiteContent()
+const { content, save, saving } = useSiteContent()
 
-const draft = reactive({ label: '', url: '', icon: 'pi pi-link' })
+const draft = reactive({ label: '', url: '', icon: 'pi pi-link', color: 'accent' })
 const error = ref('')
 
 const isBase = computed(() => props.kind === 'primary' || props.kind === 'secondary')
 const isEditing = computed(() => Boolean(props.button))
-const heading = computed(() => {
-  if (props.kind === 'primary') return 'Основная кнопка'
-  if (props.kind === 'secondary') return 'Вторая кнопка'
-  return isEditing.value ? 'Изменить кнопку' : 'Новая кнопка'
+const defaultColor = computed(() => {
+  if (props.kind === 'primary') return 'accent'
+  if (props.kind === 'secondary') return 'outline'
+  return 'accent'
 })
+const previewAppearance = computed(() => buttonAppearance(draft.color))
+const heading = computed(() => (isEditing.value ? 'Изменить кнопку' : 'Новая кнопка'))
 const baseKeys = computed(() => [
   `hero.${props.kind}Label`,
   `hero.${props.kind}Url`,
-  `hero.${props.kind}Icon`
+  `hero.${props.kind}Icon`,
+  `hero.${props.kind}Color`
 ])
-const hasOwnBase = computed(() => baseKeys.value.some((key) => key in overrides.value))
-const canRevert = computed(() => isBase.value && hasOwnBase.value)
-const canDelete = computed(() => props.kind === 'extra' && props.index >= 0)
+const canDelete = computed(() => isBase.value || (props.kind === 'extra' && props.index >= 0))
 // Больше четырёх добавленных кнопок не нужно: hero и так широкий
 const limitReached = computed(
   () => !isBase.value && !isEditing.value && content.value.hero.extraButtons.length >= MAX_EXTRA_BUTTONS
 )
 const previewLabel = computed(() => draft.label.trim() || 'Подпись кнопки')
-// Базовая кнопка без ссылки = скрыта с главной; в окне показываем это словами
-const willHide = computed(() => isBase.value && !draft.url.trim())
 
 function isValidIcon(icon) {
   return BUTTON_ICONS.some((option) => option.value === icon)
@@ -60,11 +67,20 @@ function iconLabel(icon) {
   return BUTTON_ICONS.find((option) => option.value === icon)?.label ?? ''
 }
 
+function colorLabel(color) {
+  return BUTTON_COLORS.find((option) => option.value === color)?.label ?? ''
+}
+
+function colorSwatch(color) {
+  return BUTTON_COLORS.find((option) => option.value === color)?.swatch ?? '#9146ff'
+}
+
 function loadDraft() {
   error.value = ''
   draft.label = props.button?.label ?? ''
   draft.url = props.button?.url ?? ''
   draft.icon = isValidIcon(props.button?.icon) ? props.button.icon : 'pi pi-link'
+  draft.color = normalizeButtonColor(props.button?.color, defaultColor.value)
 }
 
 watch(visible, (open) => {
@@ -73,25 +89,16 @@ watch(visible, (open) => {
 
 async function submit() {
   const label = draft.label.trim()
-  const rawUrl = draft.url.trim()
-  const url = normalizeUrl(rawUrl)
+  const url = normalizeUrl(draft.url.trim())
   error.value = ''
 
-  if (isBase.value) {
-    // Пустая ссылка — осознанное «скрыть кнопку», а вот мусор в поле не пускаем
-    if (rawUrl && !url) {
-      error.value = 'Ссылка должна начинаться с http:// или https://'
-      return
-    }
-  } else {
-    if (!label) {
-      error.value = 'Впиши подпись кнопки'
-      return
-    }
-    if (!url) {
-      error.value = 'Ссылка должна начинаться с http:// или https://'
-      return
-    }
+  if (!label) {
+    error.value = 'Впиши подпись кнопки'
+    return
+  }
+  if (!url) {
+    error.value = 'Ссылка должна начинаться с http:// или https://'
+    return
   }
   if (limitReached.value) {
     error.value = `Больше ${MAX_EXTRA_BUTTONS} добавленных кнопок нельзя`
@@ -99,17 +106,15 @@ async function submit() {
   }
 
   const icon = isValidIcon(draft.icon) ? draft.icon : 'pi pi-link'
+  const color = normalizeButtonColor(draft.color, defaultColor.value)
 
   try {
     if (isBase.value) {
-      const [labelKey, urlKey, iconKey] = baseKeys.value
-      const patch = { [urlKey]: url, [iconKey]: icon }
-      // Стёртая подпись не должна оставлять кнопку без текста — остаётся дефолт
-      if (label) patch[labelKey] = label
-      await save(patch)
+      const [labelKey, urlKey, iconKey, colorKey] = baseKeys.value
+      await save({ [labelKey]: label, [urlKey]: url, [iconKey]: icon, [colorKey]: color })
     } else {
       const list = [...content.value.hero.extraButtons]
-      const payload = { label, url, icon }
+      const payload = { label, url, icon, color }
       if (props.index >= 0 && props.index < list.length) list[props.index] = payload
       else list.push(payload)
       await save({ 'hero.extraButtons': list })
@@ -127,27 +132,19 @@ async function remove() {
 
   error.value = ''
   try {
-    const list = [...content.value.hero.extraButtons]
-    list.splice(props.index, 1)
-    await save({ 'hero.extraButtons': list })
+    if (isBase.value) {
+      // Пустая ссылка убирает кнопку с главной и не возвращает дефолт из кода
+      const [, urlKey] = baseKeys.value
+      await save({ [urlKey]: '' })
+    } else {
+      const list = [...content.value.hero.extraButtons]
+      list.splice(props.index, 1)
+      await save({ 'hero.extraButtons': list })
+    }
     emit('removed', draft.label)
     visible.value = false
   } catch (err) {
     error.value = err?.message ?? 'Не удалось удалить кнопку'
-  }
-}
-
-/** «Как было»: удаляем правки трёх ключей — вернётся кнопка из кода. */
-async function revert() {
-  if (!canRevert.value) return
-
-  error.value = ''
-  try {
-    await reset(baseKeys.value)
-    emit('reverted')
-    visible.value = false
-  } catch (err) {
-    error.value = err?.message ?? 'Не удалось вернуть исходную кнопку'
   }
 }
 </script>
@@ -184,9 +181,7 @@ async function revert() {
           @keyup.enter="submit"
         />
         <small class="muted">
-          {{ isBase
-            ? 'Открывается в новой вкладке. Оставь поле пустым, чтобы скрыть кнопку с главной.'
-            : 'Открывается в новой вкладке. Без http(s) кнопку не сохранить.' }}
+          Открывается в новой вкладке. Без http(s) кнопку не сохранить.
         </small>
       </div>
 
@@ -215,19 +210,51 @@ async function revert() {
         </Select>
       </div>
 
+      <div class="hero-btn__field">
+        <label class="hero-btn__label" for="hero-btn-color">Цвет</label>
+        <Select
+          id="hero-btn-color"
+          v-model="draft.color"
+          :options="BUTTON_COLORS"
+          option-label="label"
+          option-value="value"
+          append-to="body"
+        >
+          <template #value="slotProps">
+            <span class="hero-btn__color-option">
+              <span
+                class="hero-btn__color-swatch"
+                :style="{ background: colorSwatch(slotProps.value) }"
+                aria-hidden="true"
+              />
+              {{ colorLabel(slotProps.value) }}
+            </span>
+          </template>
+          <template #option="slotProps">
+            <span class="hero-btn__color-option">
+              <span
+                class="hero-btn__color-swatch"
+                :style="{ background: slotProps.option.swatch }"
+                aria-hidden="true"
+              />
+              {{ slotProps.option.label }}
+            </span>
+          </template>
+        </Select>
+        <small class="muted">
+          Цвет заливки кнопки. «Прозрачный» оставит только рамку.
+        </small>
+      </div>
+
       <div class="hero-btn__preview">
         <span class="hero-btn__label">Так будет выглядеть</span>
         <Button
-          v-if="!willHide"
           :label="previewLabel"
           :icon="draft.icon"
-          :outlined="kind !== 'primary'"
-          :severity="kind === 'primary' ? undefined : 'secondary'"
+          :outlined="previewAppearance.outlined"
+          :severity="previewAppearance.severity"
           class="hero-btn__preview-button"
         />
-        <small v-else class="muted">
-          Кнопки не будет на главной — вернуть её можно этим же окном.
-        </small>
       </div>
 
       <small v-if="error" class="hero-btn__error">{{ error }}</small>
@@ -244,15 +271,6 @@ async function revert() {
           severity="danger"
           :disabled="saving"
           @click="remove"
-        />
-        <Button
-          v-else-if="canRevert"
-          label="Как было"
-          icon="pi pi-undo"
-          text
-          severity="secondary"
-          :disabled="saving"
-          @click="revert"
         />
         <span class="spacer" />
         <Button label="Отмена" text severity="secondary" :disabled="saving" @click="visible = false" />
@@ -288,6 +306,22 @@ async function revert() {
   align-items: center;
   gap: 8px;
   line-height: 1;
+}
+
+.hero-btn__color-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+}
+
+.hero-btn__color-swatch {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid var(--app-border);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .hero-btn__preview {
