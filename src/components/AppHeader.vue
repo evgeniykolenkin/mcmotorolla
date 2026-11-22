@@ -33,7 +33,7 @@ const primaryNav = [
   {
     key: 'movies',
     label: 'Фильмы',
-    icon: 'pi pi-ticket',
+    icon: 'pi pi-video',
     to: MOVIES_ENABLED ? { name: 'movies' } : null,
     activeFor: ['movies', 'movie'],
     soon: !MOVIES_ENABLED
