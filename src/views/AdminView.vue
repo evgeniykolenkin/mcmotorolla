@@ -112,6 +112,12 @@ function openEdit(game) {
   formVisible.value = true;
 }
 
+function onRowClick({ data }) {
+  if (!data?.slug) return;
+
+  router.push({ name: "game", params: { slug: data.slug } });
+}
+
 function onSaved(saved, wasEdit) {
   toast.add({
     severity: "success",
@@ -334,6 +340,7 @@ function onTableDragStart(event) {
             scrollable
             row-hover
             class="admin-table surface"
+            @row-click="onRowClick"
           >
             <Column header="Игра" style="min-width: 220px">
               <template #body="{ data }">
@@ -556,6 +563,10 @@ function onTableDragStart(event) {
 
 .admin-table :deep(.p-datatable-column-title) {
   font-weight: 700;
+}
+
+.admin-table :deep(.p-datatable-tbody > tr) {
+  cursor: pointer;
 }
 
 .admin-table :deep(.p-datatable-tbody > tr > td) {
