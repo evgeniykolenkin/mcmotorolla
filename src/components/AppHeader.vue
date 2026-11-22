@@ -173,29 +173,6 @@ onBeforeUnmount(() => {
               <span v-if="item.soon" class="nav__soon">скоро</span>
             </span>
           </template>
-
-          <Button
-            v-if="isOwner"
-            icon="pi pi-cog"
-            label="Панель админа"
-            text
-            size="small"
-            severity="secondary"
-            class="nav__account"
-            :class="{ 'nav__account--active': route.name === 'admin' }"
-            @click="goToAdmin"
-          />
-          <Button
-            v-else
-            icon="pi pi-sign-in"
-            label="Войти"
-            text
-            size="small"
-            severity="secondary"
-            class="nav__account"
-            :class="{ 'nav__account--active': route.name === 'admin' }"
-            @click="goToAdmin"
-          />
         </nav>
 
         <div class="header-controls">
@@ -207,6 +184,28 @@ onBeforeUnmount(() => {
             rounded
             severity="secondary"
             @click="toggleTheme"
+          />
+          <Button
+            v-if="isOwner"
+            icon="pi pi-cog"
+            label="Панель админа"
+            text
+            size="small"
+            severity="secondary"
+            class="nav__account header-account"
+            :class="{ 'nav__account--active': route.name === 'admin' }"
+            @click="goToAdmin"
+          />
+          <Button
+            v-else
+            icon="pi pi-sign-in"
+            label="Войти"
+            text
+            size="small"
+            severity="secondary"
+            class="nav__account header-account"
+            :class="{ 'nav__account--active': route.name === 'admin' }"
+            @click="goToAdmin"
           />
           <Button
             ref="burgerRef"
@@ -430,7 +429,7 @@ onBeforeUnmount(() => {
 .header-controls {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .nav__burger {
@@ -523,6 +522,10 @@ onBeforeUnmount(() => {
 
   .nav__burger {
     display: inline-flex;
+  }
+
+  .header-account {
+    display: none;
   }
 }
 

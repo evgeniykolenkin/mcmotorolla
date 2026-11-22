@@ -120,8 +120,8 @@ function askDelete(game) {
           <Button
             label="Выйти"
             icon="pi pi-sign-out"
-            text
-            severity="secondary"
+            outlined
+            severity="danger"
             @click="doSignOut"
           />
         </div>

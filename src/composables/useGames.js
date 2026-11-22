@@ -80,7 +80,7 @@ const filteredGames = computed(() => {
       if (platform.value !== ALL_PLATFORMS && game.platform !== platform.value) return false
       if (!query) return true
 
-      return [game.title, game.genre, game.verdict, game.review]
+      return [game.title, game.genre, game.verdict]
         .filter(Boolean)
         .some((field) => String(field).toLowerCase().includes(query))
     })

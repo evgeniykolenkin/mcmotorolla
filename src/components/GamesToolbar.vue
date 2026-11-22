@@ -29,7 +29,7 @@ const sortOptions = [
       <i class="pi pi-search" />
       <InputText
         v-model="search"
-        placeholder="Поиск по названию, жанру, тексту…"
+        placeholder="Поиск по названию, жанру, описанию…"
         class="toolbar__input"
         aria-label="Поиск по играм"
       />
