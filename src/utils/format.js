@@ -11,6 +11,11 @@ export function formatDate(value) {
   })
 }
 
+/** Дата прохождения или «Не помню», если дата неизвестна. */
+export function formatCompletionDate(value) {
+  return formatDate(value) || 'Не помню'
+}
+
 /**
  * Дата и время комментария: '22 ноября 2026, 14:35'.
  * Для title у относительного времени.
@@ -124,6 +129,8 @@ export function ratingTone(rating = 0) {
 
 /** Date → 'YYYY-MM-DD' (локальная дата, без сдвигов часового пояса). */
 export function toIsoDate(value) {
+  if (value === null || value === undefined || value === '') return ''
+
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return ''
 

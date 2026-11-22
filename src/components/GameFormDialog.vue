@@ -7,6 +7,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import InputNumber from 'primevue/inputnumber'
+import Checkbox from 'primevue/checkbox'
 import DatePicker from 'primevue/datepicker'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
@@ -43,6 +44,7 @@ const emptyForm = () => ({
   rating: 8,
   hours: null,
   completedAt: new Date(),
+  dateUnknown: false,
   verdict: '',
   review: '',
   status: 'completed',
@@ -228,6 +230,8 @@ function fillForm() {
     return
   }
 
+  const dateUnknown = !props.game.completedAt
+
   Object.assign(form, {
     ...props.game,
     verdict: props.game.verdict ?? '',
@@ -236,7 +240,8 @@ function fillForm() {
     coverUrl: props.game.coverUrl && props.game.coverUrl !== 'null' ? props.game.coverUrl : '',
     releaseYear: props.game.releaseYear ?? null,
     steamAppId: props.game.steamAppId ?? null,
-    completedAt: fromIsoDate(props.game.completedAt)
+    completedAt: dateUnknown ? null : fromIsoDate(props.game.completedAt),
+    dateUnknown
   })
 }
 
@@ -250,6 +255,11 @@ watch(
     if (visible.value) fillForm()
   }
 )
+
+function onDateUnknownChange(value) {
+  form.dateUnknown = Boolean(value)
+  if (!form.dateUnknown && !form.completedAt) form.completedAt = new Date()
+}
 
 function validate() {
   resetErrors()
@@ -276,9 +286,10 @@ async function submit() {
 
   saving.value = true
   try {
+    const { dateUnknown, ...payload } = form
     const saved = await saveGame({
-      ...form,
-      completedAt: toIsoDate(form.completedAt)
+      ...payload,
+      completedAt: dateUnknown ? null : toIsoDate(form.completedAt) || null
     })
     emit('saved', saved, isEdit.value)
     visible.value = false
@@ -403,8 +414,18 @@ async function submit() {
           date-format="dd.mm.yy"
           show-icon
           :manual-input="false"
+          :disabled="form.dateUnknown"
           fluid
         />
+        <div class="date-unknown">
+          <Checkbox
+            :model-value="form.dateUnknown"
+            input-id="game-date-unknown"
+            binary
+            @update:model-value="onDateUnknownChange"
+          />
+          <label for="game-date-unknown">Не помню дату</label>
+        </div>
       </div>
       <div class="field">
         <label for="game-status">Статус</label>
@@ -615,6 +636,20 @@ async function submit() {
 .field__hint {
   font-size: 0.76rem;
   line-height: 1.35;
+}
+
+.date-unknown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.date-unknown label {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--app-text);
+  cursor: pointer;
 }
 
 /* --- Markdown в «Как проходил» -------------------------------------------- */

@@ -78,7 +78,7 @@ function payloadToRow(payload) {
       payload.hours === null || payload.hours === '' ? null : Number(payload.hours)
   }
   if (payload.completedAt !== undefined) {
-    row.completed_at = payload.completedAt || new Date().toISOString().slice(0, 10)
+    row.completed_at = payload.completedAt || null
   }
   if (payload.verdict !== undefined) row.verdict = toText(payload.verdict)
   if (payload.review !== undefined) row.review = toText(payload.review)
@@ -102,6 +102,11 @@ function toError(error) {
   if (/JWT|token is expired|session/i.test(message)) {
     return new Error('Сессия истекла — войдите заново')
   }
+  if (/null value in column "completed_at"/i.test(message)) {
+    return new Error(
+      'В Supabase не выполнена миграция даты — запустите supabase/0005_optional_completed_at.sql'
+    )
+  }
   if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
     return new Error('Нет связи с Supabase — проверьте интернет')
   }
@@ -124,7 +129,8 @@ export async function list() {
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
-    .order('completed_at', { ascending: false })
+    .order('completed_at', { ascending: false, nullsFirst: false })
+    .order('updated_at', { ascending: false })
 
   if (error) throw toError(error)
   return (data ?? []).map(rowToGame)

@@ -57,7 +57,7 @@ function normalize(payload, previous = {}, games) {
       payload.hours === null || payload.hours === '' || payload.hours === undefined
         ? null
         : Number(payload.hours),
-    completedAt: payload.completedAt || new Date().toISOString().slice(0, 10),
+    completedAt: payload.completedAt || null,
     verdict: toText(payload.verdict),
     review: toText(payload.review),
     status: payload.status ?? 'completed',
@@ -69,9 +69,17 @@ function normalize(payload, previous = {}, games) {
   }
 }
 
+/** Сначала игры с датой, без даты — в конце; при равенстве — свежие правки выше. */
+function compareByCompletionDesc(a, b) {
+  const byDate = String(b.completedAt || '').localeCompare(String(a.completedAt || ''))
+  if (byDate) return byDate
+
+  return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))
+}
+
 export async function list() {
   await wait()
-  return readStore().sort((a, b) => String(b.completedAt).localeCompare(String(a.completedAt)))
+  return readStore().sort(compareByCompletionDesc)
 }
 
 export async function getBySlug(slug) {

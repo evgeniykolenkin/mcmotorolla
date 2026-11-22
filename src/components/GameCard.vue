@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router'
 import Tag from 'primevue/tag'
 import RatingBadge from './RatingBadge.vue'
 import StatusBadge from './StatusBadge.vue'
-import { formatDate, formatHours } from '../utils/format'
+import { formatCompletionDate, formatHours } from '../utils/format'
 
 const props = defineProps({
   game: { type: Object, required: true },
@@ -61,7 +61,7 @@ const initials = computed(() =>
           <span>{{ game.platform }}</span>
           <span v-if="game.releaseYear">· {{ game.releaseYear }}</span>
           <span v-if="game.hours">· {{ formatHours(game.hours) }}</span>
-          <span>· {{ formatDate(game.completedAt) }}</span>
+          <span>· {{ formatCompletionDate(game.completedAt) }}</span>
         </div>
       </div>
     </template>
@@ -97,7 +97,7 @@ const initials = computed(() =>
             <span>{{ game.platform }}</span>
             <span v-if="game.releaseYear">· {{ game.releaseYear }}</span>
             <span v-if="game.hours">· {{ formatHours(game.hours) }}</span>
-            <span>· {{ formatDate(game.completedAt) }}</span>
+            <span>· {{ formatCompletionDate(game.completedAt) }}</span>
           </div>
         </div>
       </div>

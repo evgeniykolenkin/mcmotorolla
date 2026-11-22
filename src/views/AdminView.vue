@@ -14,7 +14,7 @@ import RatingBadge from "../components/RatingBadge.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { useAuth } from "../composables/useAuth";
 import { useGames } from "../composables/useGames";
-import { formatDate, formatHours } from "../utils/format";
+import { formatCompletionDate, formatHours } from "../utils/format";
 import { isLocalBackend } from "../config/site";
 
 const route = useRoute();
@@ -368,7 +368,9 @@ function onTableDragStart(event) {
             <Column header="Дата прохождения" style="width: 176px">
               <template #body="{ data }">
                 <div class="cell-date">
-                  <span>{{ formatDate(data.completedAt) }}</span>
+                  <span :class="{ muted: !data.completedAt }">
+                    {{ formatCompletionDate(data.completedAt) }}
+                  </span>
                   <span v-if="data.hours" class="muted">{{
                     formatHours(data.hours)
                   }}</span>

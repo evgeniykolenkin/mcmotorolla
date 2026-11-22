@@ -28,13 +28,23 @@ function statusRank(game) {
   return STATUS_ORDER[game.status || 'completed'] ?? STATUS_FALLBACK
 }
 
+/**
+ * Сначала игры с датой, новые выше; записи без даты — в конце.
+ * Одинаковые даты сортируем по времени последней правки.
+ */
+function byRecent(a, b) {
+  const byDate = String(b.completedAt || '').localeCompare(String(a.completedAt || ''))
+  if (byDate) return byDate
+
+  return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))
+}
+
 const sorters = {
-  recent: (a, b) => String(b.completedAt).localeCompare(String(a.completedAt)),
-  rating: (a, b) => b.rating - a.rating || String(b.completedAt).localeCompare(String(a.completedAt)),
+  recent: byRecent,
+  rating: (a, b) => b.rating - a.rating || byRecent(a, b),
   title: (a, b) => a.title.localeCompare(b.title, 'ru'),
   // Группы по статусу, внутри группы — как в «Сначала новые»
-  status: (a, b) =>
-    statusRank(a) - statusRank(b) || String(b.completedAt).localeCompare(String(a.completedAt))
+  status: (a, b) => statusRank(a) - statusRank(b) || byRecent(a, b)
 }
 
 // Номер последнего запроса: ответы, пришедшие после более свежего, игнорируем —
@@ -87,9 +97,8 @@ const filteredGames = computed(() => {
     .sort(sorters[sortBy.value] ?? sorters.recent)
 })
 
-const allGames = computed(() =>
-  [...games.value].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-)
+// В админке тот же порядок, что и на главной: unknown-даты всегда в конце.
+const allGames = computed(() => [...games.value].sort(byRecent))
 
 const stats = computed(() => {
   const items = publishedGames.value

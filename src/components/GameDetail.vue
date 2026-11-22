@@ -5,7 +5,7 @@ import Tag from 'primevue/tag'
 import RatingBadge from './RatingBadge.vue'
 import MarkdownText from './MarkdownText.vue'
 import { useAuth } from '../composables/useAuth'
-import { STATUS_LABELS, formatDate, formatHours, ratingTone } from '../utils/format'
+import { STATUS_LABELS, formatCompletionDate, formatHours, ratingTone } from '../utils/format'
 
 const props = defineProps({
   game: { type: Object, required: true }
@@ -97,8 +97,8 @@ const steamUrl = computed(() =>
       <div class="detail__meta">
         <Tag :value="game.platform" severity="secondary" />
         <Tag :value="statusLabel" severity="contrast" />
-        <span class="detail__meta-item muted" v-if="game.completedAt">
-          <i class="pi pi-calendar" /> {{ formatDate(game.completedAt) }}
+        <span class="detail__meta-item muted">
+          <i class="pi pi-calendar" /> {{ formatCompletionDate(game.completedAt) }}
         </span>
         <span class="detail__meta-item muted" v-if="game.hours">
           <i class="pi pi-clock" /> {{ formatHours(game.hours) }}

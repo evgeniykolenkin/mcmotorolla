@@ -108,6 +108,9 @@ cp .env.example .env.local   # Windows: Copy-Item .env.example .env.local
    Затем — `supabase/0004_comments.sql`: таблица `comments`, RLS, одноуровневые ответы,
    ограничение 500 символов и триггер с лимитом частоты. **Этот скрипт тоже нужно
    применить до деплоя** кода с комментариями, иначе раздел покажет ошибку миграции.
+   Затем — `supabase/0005_optional_completed_at.sql`: разрешает `null` в `completed_at`
+   для игр с неизвестной датой прохождения. **Применить до деплоя** кода с пунктом
+   «Не помню дату», иначе сохранение такой игры вернёт ошибку миграции.
 3. **Authentication → Users → Add user**: email владельца + пароль, включить
    **Auto Confirm User**.
 4. **Authentication → Sign In / Providers → Email**: выключить **Allow new users to sign up** —
