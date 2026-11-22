@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useConfirm } from "primevue/useconfirm";
 import { useToast } from "primevue/usetoast";
@@ -28,6 +28,21 @@ const { allGames, loading, stats, ensureLoaded, deleteGame } = useGames();
 const formVisible = ref(false);
 const editing = ref(null);
 
+const tableWrap = ref(null);
+const tableScrollable = ref(false);
+const tableDragging = ref(false);
+
+const DRAG_THRESHOLD_PX = 5;
+
+let tableResizeObserver = null;
+let dragPointerId = null;
+let dragContainer = null;
+let dragStartX = 0;
+let dragStartY = 0;
+let dragStartScrollLeft = 0;
+let dragMoved = false;
+let suppressClick = false;
+
 const draftCount = computed(
   () => allGames.value.filter((game) => !game.published).length,
 );
@@ -48,6 +63,44 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  tableWrap,
+  async (wrapper) => {
+    tableResizeObserver?.disconnect();
+    tableResizeObserver = null;
+    tableScrollable.value = false;
+
+    if (!wrapper) return;
+
+    await nextTick();
+    if (tableWrap.value !== wrapper) return;
+
+    const container = wrapper.querySelector(".p-datatable-table-container");
+    if (!(container instanceof HTMLElement)) return;
+
+    const updateScrollable = () => {
+      tableScrollable.value =
+        container.scrollWidth > container.clientWidth + 1;
+    };
+
+    updateScrollable();
+
+    if (typeof ResizeObserver === "undefined") return;
+
+    tableResizeObserver = new ResizeObserver(updateScrollable);
+    tableResizeObserver.observe(container);
+
+    const table = container.querySelector(".p-datatable-table");
+    if (table) tableResizeObserver.observe(table);
+  },
+  { flush: "post" },
+);
+
+onBeforeUnmount(() => {
+  tableResizeObserver?.disconnect();
+  tableResizeObserver = null;
+});
 
 function openCreate() {
   editing.value = null;
@@ -99,6 +152,106 @@ function askDelete(game) {
       });
     },
   });
+}
+
+function findTableScrollContainer(target) {
+  if (!(target instanceof Element)) return null;
+
+  const table = target.closest(".p-datatable-table");
+  const container = table?.closest(".p-datatable-table-container");
+
+  return container instanceof HTMLElement ? container : null;
+}
+
+function resetTableDrag() {
+  if (
+    dragPointerId !== null &&
+    tableWrap.value?.hasPointerCapture?.(dragPointerId)
+  ) {
+    tableWrap.value.releasePointerCapture(dragPointerId);
+  }
+
+  dragPointerId = null;
+  dragContainer = null;
+  dragMoved = false;
+  tableDragging.value = false;
+}
+
+function onTablePointerDown(event) {
+  if (event.pointerType !== "mouse" || event.button !== 0) return;
+
+  suppressClick = false;
+
+  const container = findTableScrollContainer(event.target);
+  if (!container) return;
+  if (container.scrollWidth <= container.clientWidth + 1) return;
+
+  dragPointerId = event.pointerId;
+  dragContainer = container;
+  dragStartX = event.clientX;
+  dragStartY = event.clientY;
+  dragStartScrollLeft = container.scrollLeft;
+  dragMoved = false;
+}
+
+function onTablePointerMove(event) {
+  if (dragPointerId !== event.pointerId || !dragContainer) return;
+
+  if ((event.buttons & 1) === 0) {
+    resetTableDrag();
+    return;
+  }
+
+  const dx = event.clientX - dragStartX;
+  const dy = event.clientY - dragStartY;
+
+  if (!dragMoved) {
+    if (
+      Math.abs(dx) < DRAG_THRESHOLD_PX ||
+      Math.abs(dx) <= Math.abs(dy)
+    ) {
+      return;
+    }
+
+    dragMoved = true;
+    tableDragging.value = true;
+    window.getSelection()?.removeAllRanges();
+    tableWrap.value?.setPointerCapture?.(dragPointerId);
+  }
+
+  event.preventDefault();
+
+  const maxScrollLeft = dragContainer.scrollWidth - dragContainer.clientWidth;
+  dragContainer.scrollLeft = Math.min(
+    maxScrollLeft,
+    Math.max(0, dragStartScrollLeft - dx),
+  );
+}
+
+function onTablePointerUp(event) {
+  if (dragPointerId !== event.pointerId) return;
+
+  if (dragMoved) suppressClick = true;
+
+  resetTableDrag();
+}
+
+function onTablePointerCancel(event) {
+  if (dragPointerId !== event.pointerId) return;
+
+  resetTableDrag();
+}
+
+function onTableClickCapture(event) {
+  if (!suppressClick) return;
+
+  suppressClick = false;
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function onTableDragStart(event) {
+  if (dragPointerId !== null) event.preventDefault();
 }
 </script>
 
@@ -159,87 +312,102 @@ function askDelete(game) {
           </div>
         </div>
 
-        <DataTable
+        <div
           v-if="allGames.length"
-          :value="allGames"
-          data-key="id"
-          :loading="loading"
-          scrollable
-          row-hover
-          class="admin-table surface"
+          ref="tableWrap"
+          class="admin-table-scroll"
+          :class="{
+            'is-scrollable': tableScrollable,
+            'is-dragging': tableDragging,
+          }"
+          @pointerdown="onTablePointerDown"
+          @pointermove="onTablePointerMove"
+          @pointerup="onTablePointerUp"
+          @pointercancel="onTablePointerCancel"
+          @dragstart="onTableDragStart"
+          @click.capture="onTableClickCapture"
         >
-          <Column header="Игра" style="min-width: 220px">
-            <template #body="{ data }">
-              <div class="cell-game">
-                <RouterLink
-                  :to="{ name: 'game', params: { slug: data.slug } }"
-                  class="cell-game__title"
-                >
-                  {{ data.title }}
-                </RouterLink>
-                <span class="cell-game__meta muted">
-                  {{ data.platform
-                  }}<template v-if="data.genre"> · {{ data.genre }}</template>
-                </span>
-              </div>
-            </template>
-          </Column>
+          <DataTable
+            :value="allGames"
+            data-key="id"
+            :loading="loading"
+            scrollable
+            row-hover
+            class="admin-table surface"
+          >
+            <Column header="Игра" style="min-width: 220px">
+              <template #body="{ data }">
+                <div class="cell-game">
+                  <RouterLink
+                    :to="{ name: 'game', params: { slug: data.slug } }"
+                    class="cell-game__title"
+                  >
+                    {{ data.title }}
+                  </RouterLink>
+                  <span class="cell-game__meta muted">
+                    {{ data.platform
+                    }}<template v-if="data.genre"> · {{ data.genre }}</template>
+                  </span>
+                </div>
+              </template>
+            </Column>
 
-          <Column header="Оценка" style="width: 104px">
-            <template #body="{ data }">
-              <RatingBadge :rating="data.rating" size="sm" />
-            </template>
-          </Column>
+            <Column header="Оценка" style="width: 104px">
+              <template #body="{ data }">
+                <RatingBadge :rating="data.rating" size="sm" />
+              </template>
+            </Column>
 
-          <Column header="Дата прохождения" style="width: 176px">
-            <template #body="{ data }">
-              <div class="cell-date">
-                <span>{{ formatDate(data.completedAt) }}</span>
-                <span v-if="data.hours" class="muted">{{
-                  formatHours(data.hours)
-                }}</span>
-              </div>
-            </template>
-          </Column>
+            <Column header="Дата прохождения" style="width: 176px">
+              <template #body="{ data }">
+                <div class="cell-date">
+                  <span>{{ formatDate(data.completedAt) }}</span>
+                  <span v-if="data.hours" class="muted">{{
+                    formatHours(data.hours)
+                  }}</span>
+                </div>
+              </template>
+            </Column>
 
-          <Column header="Статус" style="width: 132px">
-            <template #body="{ data }">
-              <Tag
-                v-if="data.published"
-                value="Опубликовано"
-                severity="success"
-              />
-              <Tag v-else value="Черновик" severity="warn" />
-            </template>
-          </Column>
-
-          <Column header="" style="width: 108px">
-            <template #body="{ data }">
-              <div class="cell-actions">
-                <Button
-                  v-tooltip.top="'Редактировать'"
-                  icon="pi pi-pencil"
-                  text
-                  rounded
-                  size="small"
-                  severity="secondary"
-                  aria-label="Редактировать"
-                  @click="openEdit(data)"
+            <Column header="Статус" style="width: 132px">
+              <template #body="{ data }">
+                <Tag
+                  v-if="data.published"
+                  value="Опубликовано"
+                  severity="success"
                 />
-                <Button
-                  v-tooltip.top="'Удалить'"
-                  icon="pi pi-trash"
-                  text
-                  rounded
-                  size="small"
-                  severity="danger"
-                  aria-label="Удалить"
-                  @click="askDelete(data)"
-                />
-              </div>
-            </template>
-          </Column>
-        </DataTable>
+                <Tag v-else value="Черновик" severity="warn" />
+              </template>
+            </Column>
+
+            <Column header="" style="width: 108px">
+              <template #body="{ data }">
+                <div class="cell-actions">
+                  <Button
+                    v-tooltip.top="'Редактировать'"
+                    icon="pi pi-pencil"
+                    text
+                    rounded
+                    size="small"
+                    severity="secondary"
+                    aria-label="Редактировать"
+                    @click="openEdit(data)"
+                  />
+                  <Button
+                    v-tooltip.top="'Удалить'"
+                    icon="pi pi-trash"
+                    text
+                    rounded
+                    size="small"
+                    severity="danger"
+                    aria-label="Удалить"
+                    @click="askDelete(data)"
+                  />
+                </div>
+              </template>
+            </Column>
+          </DataTable>
+        </div>
 
         <EmptyState
           v-else-if="!loading"
@@ -321,6 +489,16 @@ function askDelete(game) {
 
 .admin-table {
   overflow: hidden;
+}
+
+.admin-table-scroll.is-scrollable {
+  cursor: grab;
+}
+
+.admin-table-scroll.is-dragging,
+.admin-table-scroll.is-dragging :deep(*) {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 .admin-table :deep(.p-datatable-table) {
