@@ -112,6 +112,9 @@ const steamUrl = computed(() =>
 
       <MarkdownText v-if="game.review" class="detail__review" :text="game.review || ''" />
       <p v-else class="muted">Описание прохождения пока не заполнено.</p>
+
+      <!-- Комментарии живут в этой же колонке: обложка остаётся sticky на всю высоту статьи. -->
+      <slot name="after-content" />
     </div>
   </article>
 </template>

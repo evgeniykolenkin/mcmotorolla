@@ -5,11 +5,14 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
+import Message from 'primevue/message'
 import GameDetail from '../components/GameDetail.vue'
 import GameFormDialog from '../components/GameFormDialog.vue'
+import CommentsSection from '../components/CommentsSection.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { useGames } from '../composables/useGames'
 import { useAuth } from '../composables/useAuth'
+import { commentsAvailable } from '../services/commentsRepository'
 
 const route = useRoute()
 const router = useRouter()
@@ -114,12 +117,30 @@ function askDelete() {
         </div>
       </div>
 
-      <GameDetail
-        v-else-if="game"
-        :game="game"
-        @edit="openEdit"
-        @delete="askDelete"
-      />
+      <template v-else-if="game">
+        <GameDetail
+          :game="game"
+          @edit="openEdit"
+          @delete="askDelete"
+        >
+          <template #after-content>
+            <CommentsSection
+              v-if="game.published && commentsAvailable"
+              :game-id="game.id"
+              :game-title="game.title"
+            />
+
+            <Message
+              v-if="game.published && !commentsAvailable && isOwner"
+              severity="secondary"
+              :closable="false"
+            >
+              Комментарии включатся, когда в окружении заданы VITE_SUPABASE_URL и
+              VITE_SUPABASE_ANON_KEY. В локальном режиме их нет.
+            </Message>
+          </template>
+        </GameDetail>
+      </template>
 
       <EmptyState
         v-else-if="error"

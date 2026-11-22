@@ -11,6 +11,48 @@ export function formatDate(value) {
   })
 }
 
+/**
+ * Дата и время комментария: '22 ноября 2026, 14:35'.
+ * Для title у относительного времени.
+ */
+export function formatDateTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  return date.toLocaleString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+/**
+ * Время комментария по-человечески: «только что», «5 минут назад», «вчера».
+ * Старше недели показываем обычной датой, чтобы не читать «8 месяцев назад».
+ */
+export function formatRelativeTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  // Будущее время из-за рассинхрона часов не показываем: «только что».
+  const diff = Math.min(0, date.getTime() - Date.now())
+  const abs = Math.abs(diff)
+
+  if (abs < 45_000) return 'только что'
+
+  const rtf = new Intl.RelativeTimeFormat('ru', { numeric: 'auto' })
+
+  if (abs < 60 * 60_000) return rtf.format(Math.round(diff / 60_000), 'minute')
+  if (abs < 24 * 60 * 60_000) return rtf.format(Math.round(diff / (60 * 60_000)), 'hour')
+  if (abs < 7 * 24 * 60 * 60_000) return rtf.format(Math.round(diff / (24 * 60 * 60_000)), 'day')
+
+  return formatDate(value)
+}
+
 /** 12.5 → '12,5 ч' */
 export function formatHours(value) {
   if (value === null || value === undefined || value === '') return ''
