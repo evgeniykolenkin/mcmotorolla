@@ -164,8 +164,8 @@ function askDelete(game) {
           :value="allGames"
           data-key="id"
           :loading="loading"
-          size="small"
           scrollable
+          row-hover
           class="admin-table surface"
         >
           <Column header="Игра" style="min-width: 220px">
@@ -191,7 +191,7 @@ function askDelete(game) {
             </template>
           </Column>
 
-          <Column header="Дата" style="width: 168px">
+          <Column header="Дата прохождения" style="width: 176px">
             <template #body="{ data }">
               <div class="cell-date">
                 <span>{{ formatDate(data.completedAt) }}</span>
@@ -323,14 +323,92 @@ function askDelete(game) {
   overflow: hidden;
 }
 
+.admin-table :deep(.p-datatable-table) {
+  width: 100%;
+  min-width: 740px;
+  table-layout: fixed;
+}
+
+.admin-table :deep(.p-datatable-table-container) {
+  /* В Firefox не показываем широкую системную полосу: прокрутка остаётся
+     доступной колесом/трекпадом, а внешний вид таблицы не страдает. */
+  scrollbar-width: none;
+}
+
+@supports selector(::-webkit-scrollbar) {
+  .admin-table :deep(.p-datatable-table-container) {
+    scrollbar-width: auto;
+  }
+
+  .admin-table :deep(.p-datatable-table-container::-webkit-scrollbar) {
+    width: 4px;
+    height: 4px;
+  }
+
+  .admin-table :deep(.p-datatable-table-container::-webkit-scrollbar-track) {
+    background: transparent;
+  }
+
+  .admin-table :deep(.p-datatable-table-container::-webkit-scrollbar-thumb) {
+    border-radius: 999px;
+    background: transparent;
+  }
+
+  .admin-table :deep(.p-datatable-table-container:hover::-webkit-scrollbar-thumb) {
+    background: var(--app-border);
+  }
+
+  .admin-table :deep(.p-datatable-table-container::-webkit-scrollbar-thumb:hover) {
+    background: var(--app-text-muted);
+  }
+}
+
+.admin-table :deep(.p-datatable-header-cell) {
+  padding: 12px 18px;
+  background: var(--app-surface-2);
+  color: var(--app-text-muted);
+  border-bottom: 1px solid var(--app-border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.admin-table :deep(.p-datatable-column-title) {
+  font-weight: 700;
+}
+
+.admin-table :deep(.p-datatable-tbody > tr > td) {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+.admin-table :deep(.p-datatable-tbody > tr:last-child > td) {
+  border-bottom: 0;
+}
+
+.admin-table :deep(.p-datatable-tbody > tr:hover > td) {
+  background: var(--app-surface-2);
+}
+
 .cell-game {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
 }
 
 .cell-game__title {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
   font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cell-game__title:hover {
@@ -338,22 +416,31 @@ function askDelete(game) {
 }
 
 .cell-game__meta {
+  overflow: hidden;
   font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cell-date {
   display: flex;
   flex-direction: column;
   font-size: 0.84rem;
+  white-space: nowrap;
 }
 
 .cell-date .muted {
   font-size: 0.76rem;
 }
 
+.admin-table :deep(.p-tag) {
+  white-space: nowrap;
+}
+
 .cell-actions {
   display: flex;
-  gap: 2px;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 @media (max-width: 720px) {
