@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
+import SelectButton from 'primevue/selectbutton'
 import { useToast } from 'primevue/usetoast'
 import StatsBar from '../components/StatsBar.vue'
 import GamesToolbar from '../components/GamesToolbar.vue'
@@ -35,6 +36,31 @@ const { isOwner } = useAuth()
 const { content, ensureLoaded: ensureContentLoaded, pending: contentPending } = useSiteContent()
 
 const bgVisible = ref(false)
+
+const VIEW_STORAGE_KEY = 'mcmotorolla.games-view.v1'
+const viewOptions = [
+  { value: 'grid', label: 'Сетка', icon: 'pi pi-th-large' },
+  { value: 'list', label: 'Список', icon: 'pi pi-list' }
+]
+
+/** Режим списка запоминаем в браузере: после перезагрузки он остаётся прежним. */
+function readViewMode() {
+  try {
+    return localStorage.getItem(VIEW_STORAGE_KEY) === 'list' ? 'list' : 'grid'
+  } catch {
+    return 'grid'
+  }
+}
+
+const viewMode = ref(readViewMode())
+
+watch(viewMode, (value) => {
+  try {
+    localStorage.setItem(VIEW_STORAGE_KEY, value)
+  } catch {
+    /* приватный режим — просто не запоминаем */
+  }
+})
 const heroBg = computed(() => content.value.hero.bgUrl)
 // Картинка фона проявляется после загрузки: без «прыжка» с пустого фона
 const heroBgReady = ref(false)
@@ -86,6 +112,9 @@ const resultsTitle = computed(() => {
   const total = `Всего игр: ${stats.value.count}`
   return search.value.trim() ? `${total} · найдено: ${filteredGames.value.length}` : total
 })
+
+const resultsClass = computed(() => (viewMode.value === 'list' ? 'game-list' : 'card-grid'))
+const showViewToggle = computed(() => loaded.value && games.value.length > 0)
 
 const buttonDialog = ref(false)
 const editingKind = ref('extra')
@@ -267,20 +296,57 @@ function onButtonRemoved(label) {
         <h2 class="section-title">
           {{ resultsTitle }}
         </h2>
+        <span id="games-view-label" class="visually-hidden">Вид игр</span>
+        <SelectButton
+          v-if="showViewToggle"
+          v-model="viewMode"
+          :options="viewOptions"
+          option-label="label"
+          option-value="value"
+          :allow-empty="false"
+          aria-labelledby="games-view-label"
+          class="view-toggle"
+        >
+          <template #option="{ option }">
+            <span class="view-toggle__option" :title="option.label">
+              <i :class="option.icon" aria-hidden="true" />
+              <span class="visually-hidden">{{ option.label }}</span>
+            </span>
+          </template>
+        </SelectButton>
       </div>
 
-      <div v-if="loading && !loaded" class="card-grid">
-        <div v-for="index in 6" :key="index" class="skeleton-card surface">
-          <Skeleton height="180px" border-radius="0" />
-          <div class="skeleton-card__body">
-            <Skeleton height="14px" width="80%" />
-            <Skeleton height="12px" width="55%" />
+      <div v-if="loading && !loaded" :class="resultsClass">
+        <template v-if="viewMode === 'grid'">
+          <div v-for="index in 6" :key="index" class="skeleton-card surface">
+            <Skeleton height="180px" border-radius="0" />
+            <div class="skeleton-card__body">
+              <Skeleton height="14px" width="80%" />
+              <Skeleton height="12px" width="55%" />
+            </div>
           </div>
-        </div>
+        </template>
+        <template v-else>
+          <div v-for="index in 6" :key="index" class="skeleton-row surface">
+            <div class="skeleton-row__cover">
+              <Skeleton border-radius="0" />
+            </div>
+            <div class="skeleton-row__body">
+              <Skeleton height="14px" width="46%" />
+              <Skeleton height="12px" width="82%" />
+              <Skeleton height="11px" width="34%" />
+            </div>
+          </div>
+        </template>
       </div>
 
-      <div v-else-if="filteredGames.length" class="card-grid">
-        <GameCard v-for="game in filteredGames" :key="game.id" :game="game" />
+      <div v-else-if="filteredGames.length" :class="resultsClass">
+        <GameCard
+          v-for="game in filteredGames"
+          :key="game.id"
+          :game="game"
+          :layout="viewMode"
+        />
       </div>
 
       <EmptyState
@@ -501,8 +567,83 @@ function onButtonRemoved(label) {
 
 .results-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.results-head .section-title {
+  min-width: 0;
+}
+
+/* Иконочный переключатель вида: компактная сегментированная группа */
+.view-toggle {
+  flex: 0 0 auto;
+  padding: 2px;
+  border: 1px solid var(--app-border);
+  border-radius: 11px;
+  background: var(--app-surface-2);
+}
+
+.view-toggle :deep(.p-togglebutton),
+.view-toggle :deep(.p-togglebutton:first-child),
+.view-toggle :deep(.p-togglebutton:last-child) {
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--app-text-muted);
+  box-shadow: none;
+}
+
+.view-toggle :deep(.p-togglebutton-content) {
+  padding: 0;
+  gap: 0;
+}
+
+.view-toggle :deep(.p-togglebutton:not(:disabled):not(.p-togglebutton-checked):hover) {
+  background: var(--app-accent-soft);
+  color: var(--app-text);
+}
+
+.view-toggle :deep(.p-togglebutton.p-togglebutton-checked) {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: #fff;
+}
+
+.view-toggle :deep(.p-togglebutton-checked .p-togglebutton-content) {
+  background: transparent;
+  box-shadow: none;
+}
+
+.view-toggle :deep(.p-togglebutton .pi) {
+  font-size: 0.95rem;
+}
+
+.view-toggle__option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.game-list {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
@@ -517,7 +658,54 @@ function onButtonRemoved(label) {
   padding: 14px;
 }
 
+.skeleton-row {
+  display: grid;
+  grid-template-columns: 75px minmax(0, 1fr);
+  min-height: 100px;
+  overflow: hidden;
+}
+
+.skeleton-row__cover {
+  min-width: 0;
+  background: var(--app-surface-2);
+}
+
+.skeleton-row__cover :deep(.p-skeleton) {
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+  border-radius: 0;
+}
+
+.skeleton-row__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+}
+
 @media (max-width: 640px) {
+  .view-toggle :deep(.p-togglebutton),
+  .view-toggle :deep(.p-togglebutton:first-child),
+  .view-toggle :deep(.p-togglebutton:last-child) {
+    width: 30px;
+  }
+
+  .skeleton-row {
+    grid-template-columns: 72px minmax(0, 1fr);
+    min-height: 96px;
+  }
+
+  .skeleton-row__cover :deep(.p-skeleton) {
+    min-height: 96px;
+  }
+
+  .skeleton-row__body {
+    gap: 5px;
+    padding: 8px 12px;
+  }
+
   .hero {
     padding: 28px 20px;
   }

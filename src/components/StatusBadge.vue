@@ -5,9 +5,15 @@ import { statusTone } from '../utils/format'
 /**
  * Статус прохождения на обложке: цветная точка + короткая подпись.
  * Полная подпись уходит в title/aria-label — «Прохожу сейчас» в плашку не лезет.
+ * variant="inline" — для строки списка: текст читается на светлой поверхности.
  */
 const props = defineProps({
-  status: { type: String, default: '' }
+  status: { type: String, default: '' },
+  variant: {
+    type: String,
+    default: 'overlay',
+    validator: (value) => ['overlay', 'inline'].includes(value)
+  }
 })
 
 const view = computed(() => statusTone(props.status))
@@ -16,7 +22,7 @@ const view = computed(() => statusTone(props.status))
 <template>
   <span
     class="status-badge"
-    :class="`status-badge--${view.tone}`"
+    :class="[`status-badge--${view.tone}`, `status-badge--${props.variant}`]"
     :title="view.label"
     :aria-label="view.label"
   >
@@ -47,18 +53,29 @@ const view = computed(() => statusTone(props.status))
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--status-tone, currentColor);
 }
 
 .status-badge--completed {
-  color: var(--tone-great);
+  --status-tone: var(--tone-great);
+  color: var(--status-tone);
 }
 
 .status-badge--playing {
-  color: #25c8ff;
+  --status-tone: #25c8ff;
+  color: var(--status-tone);
 }
 
 .status-badge--dropped {
-  color: var(--tone-bad);
+  --status-tone: var(--tone-bad);
+  color: var(--status-tone);
+}
+
+/* В списке бейдж лежит на поверхности карточки, а не на обложке */
+.status-badge--inline {
+  background: color-mix(in srgb, var(--status-tone) 10%, var(--app-surface-2));
+  border-color: color-mix(in srgb, var(--status-tone) 45%, var(--app-border));
+  backdrop-filter: none;
+  color: var(--app-text);
 }
 </style>
