@@ -288,7 +288,7 @@ Publishable key публичный — доступ к строкам огран
 src/
   components/     AppHeader, StatsBar, GamesToolbar, GameCard, RatingBadge,
                   RatingInput, GameFormDialog, GameDetail, CommentsSection,
-                  CommentItem, CommentForm, LoginPanel, EmptyState,
+                  CommentItem, CommentForm, LoginPanel, EmptyState, ScrollTopButton,
                   EditableText, EditTextPopover, ImageEditDialog, HeroButtonDialog,
                   BrandAvatar, MarkdownText
   composables/    useGames (состояние, поиск, сортировка), useAuth, useTheme, useSiteContent,
@@ -301,7 +301,8 @@ src/
                   settingsRepository.js (тексты сайта) + supabase/localSettingsRepo.js,
                   mediaRepo.js (загрузка картинок в Storage),
                   commentsRepository.js (фасад комментариев) + supabaseCommentsRepo.js
-  styles/         base.css — токены (в т.ч. --control-h), тёмная/светлая тема, markdown
+  styles/         base.css — токены (в т.ч. --control-h и --app-header-height),
+                  тёмная/светлая тема, markdown
   utils/          slugify, format (даты, оценки, статусы, цвета), image (сжатие),
                   markdown (рендер)
   views/          HomeView, GameView, AdminView, NotFoundView
@@ -516,7 +517,20 @@ Free-проект Supabase засыпает после ~7 дней без зап
     регистрации, необязательный ник, один уровень ответов, сворачивание веток,
     пагинация по 20, лимит 500 символов, plain-text вывод, удаление владельцем и
     миграция `supabase/0004_comments.sql` с RLS и антифлуд-триггером.
-19. Осталось из идей: загрузка обложек игр в Supabase Storage, смена пароля из `/admin`,
+19. Обратная связь владельца, раунд 15 — готово: панель поиска/сортировки и
+    переключатель «сетка / список» закреплены под шапкой, на главной и в админке
+    появилась кнопка «Наверх», в таблице админки добавлен статус прохождения,
+    средняя оценка из админки убрана, а окно подтверждения удаления больше
+    не перетаскивается и не смещается.
+20. Обратная связь владельца, раунд 16 — готово: между шапкой и залипшей панелью
+    поиска добавлен зазор 9 px, у кнопки «Наверх» убран тултип, столбец
+    «Прохождение» переименован в «Статус», а `scrollbar-gutter: stable` убрал
+    пустую полосу слева от сайта, сохранив резерв под скроллбар справа.
+21. Обратная связь владельца, раунд 17 — готово: окно подтверждения удаления
+    закрывается по клику на подложку, как остальные модальные окна, но не
+    закрывается при клике внутри. В PrimeVue 4.5 у `ConfirmDialog` нет
+    `dismissableMask`, поэтому обработчик подложки добавлен через `pt`.
+22. Осталось из идей: загрузка обложек игр в Supabase Storage, смена пароля из `/admin`,
     возврат фильтра платформ на главную.
 
 

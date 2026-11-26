@@ -63,11 +63,20 @@ const sortOptions = [
       aria-label="Сортировка"
       class="toolbar__select"
     />
+
+    <div v-if="$slots.actions" class="toolbar__actions">
+      <slot name="actions" />
+    </div>
   </div>
 </template>
 
 <style scoped>
 .toolbar {
+  /* Панель остаётся под шапкой: поиск и сортировка доступны без прокрутки вверх.
+     10px = 1px нижней границы шапки + 9px зазора до панели. */
+  position: sticky;
+  top: calc(var(--app-header-height) + 10px);
+  z-index: 40;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -143,6 +152,13 @@ const sortOptions = [
   margin-inline-start: auto;
 }
 
+/* Дополнительные контролы страницы: переключатель вида игр и т.п. */
+.toolbar__actions {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
 /* Селект и инпут в одну линию: одна высота, текст по центру */
 .toolbar :deep(.p-select) {
   height: var(--control-h);
@@ -167,6 +183,10 @@ const sortOptions = [
     flex: 1 1 auto;
     min-width: 0;
     margin-inline-start: 0;
+  }
+
+  .toolbar__actions {
+    margin-inline-start: auto;
   }
 }
 </style>

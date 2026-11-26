@@ -295,7 +295,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 76px;
+  min-height: var(--app-header-height);
 }
 
 .brand-wrap {
@@ -532,7 +532,6 @@ onBeforeUnmount(() => {
 @media (max-width: 560px) {
   .header-inner {
     gap: 8px;
-    min-height: 64px;
   }
 
   .brand-wrap {

@@ -10,6 +10,7 @@ import StatsBar from '../components/StatsBar.vue'
 import GamesToolbar from '../components/GamesToolbar.vue'
 import GameCard from '../components/GameCard.vue'
 import EmptyState from '../components/EmptyState.vue'
+import ScrollTopButton from '../components/ScrollTopButton.vue'
 import EditableText from '../components/EditableText.vue'
 import ImageEditDialog from '../components/ImageEditDialog.vue'
 import HeroButtonDialog from '../components/HeroButtonDialog.vue'
@@ -285,7 +286,28 @@ function onButtonRemoved(label) {
 
       <StatsBar />
 
-      <GamesToolbar />
+      <GamesToolbar>
+        <template #actions>
+          <span id="games-view-label" class="visually-hidden">Вид игр</span>
+          <SelectButton
+            v-if="showViewToggle"
+            v-model="viewMode"
+            :options="viewOptions"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+            aria-labelledby="games-view-label"
+            class="view-toggle"
+          >
+            <template #option="{ option }">
+              <span class="view-toggle__option" :title="option.label">
+                <i :class="option.icon" aria-hidden="true" />
+                <span class="visually-hidden">{{ option.label }}</span>
+              </span>
+            </template>
+          </SelectButton>
+        </template>
+      </GamesToolbar>
 
       <Message v-if="error" severity="error" :closable="false">
         {{ error }}
@@ -296,24 +318,6 @@ function onButtonRemoved(label) {
         <h2 class="section-title">
           {{ resultsTitle }}
         </h2>
-        <span id="games-view-label" class="visually-hidden">Вид игр</span>
-        <SelectButton
-          v-if="showViewToggle"
-          v-model="viewMode"
-          :options="viewOptions"
-          option-label="label"
-          option-value="value"
-          :allow-empty="false"
-          aria-labelledby="games-view-label"
-          class="view-toggle"
-        >
-          <template #option="{ option }">
-            <span class="view-toggle__option" :title="option.label">
-              <i :class="option.icon" aria-hidden="true" />
-              <span class="visually-hidden">{{ option.label }}</span>
-            </span>
-          </template>
-        </SelectButton>
       </div>
 
       <div v-if="loading && !loaded" :class="resultsClass">
@@ -376,6 +380,8 @@ function onButtonRemoved(label) {
         />
       </EmptyState>
     </div>
+
+    <ScrollTopButton />
   </div>
 </template>
 

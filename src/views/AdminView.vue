@@ -11,6 +11,8 @@ import Message from "primevue/message";
 import LoginPanel from "../components/LoginPanel.vue";
 import GameFormDialog from "../components/GameFormDialog.vue";
 import RatingBadge from "../components/RatingBadge.vue";
+import StatusBadge from "../components/StatusBadge.vue";
+import ScrollTopButton from "../components/ScrollTopButton.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { useAuth } from "../composables/useAuth";
 import { useGames } from "../composables/useGames";
@@ -312,10 +314,6 @@ function onTableDragStart(event) {
             <span class="mini-stat__value">{{ draftCount }}</span>
             <span class="mini-stat__label muted">черновиков</span>
           </div>
-          <div class="mini-stat surface">
-            <span class="mini-stat__value">{{ stats.average }}</span>
-            <span class="mini-stat__label muted">средняя оценка</span>
-          </div>
         </div>
 
         <div
@@ -378,7 +376,13 @@ function onTableDragStart(event) {
               </template>
             </Column>
 
-            <Column header="Статус" style="width: 132px">
+            <Column header="Статус" style="width: 144px">
+              <template #body="{ data }">
+                <StatusBadge :status="data.status" variant="inline" />
+              </template>
+            </Column>
+
+            <Column header="Публикация" style="width: 140px">
               <template #body="{ data }">
                 <Tag
                   v-if="data.published"
@@ -400,7 +404,8 @@ function onTableDragStart(event) {
                     size="small"
                     severity="secondary"
                     aria-label="Редактировать"
-                    @click="openEdit(data)"
+                    @pointerdown.stop
+                    @click.stop="openEdit(data)"
                   />
                   <Button
                     v-tooltip.top="'Удалить'"
@@ -410,7 +415,8 @@ function onTableDragStart(event) {
                     size="small"
                     severity="danger"
                     aria-label="Удалить"
-                    @click="askDelete(data)"
+                    @pointerdown.stop
+                    @click.stop="askDelete(data)"
                   />
                 </div>
               </template>
@@ -435,6 +441,8 @@ function onTableDragStart(event) {
       :game="editing"
       @saved="onSaved"
     />
+
+    <ScrollTopButton />
   </div>
 </template>
 
@@ -474,7 +482,7 @@ function onTableDragStart(event) {
 
 .mini-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
 }
 
@@ -512,7 +520,7 @@ function onTableDragStart(event) {
 
 .admin-table :deep(.p-datatable-table) {
   width: 100%;
-  min-width: 740px;
+  min-width: 900px;
   table-layout: fixed;
 }
 
@@ -635,10 +643,6 @@ function onTableDragStart(event) {
 }
 
 @media (max-width: 720px) {
-  .mini-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .admin-head {
     align-items: flex-start;
   }

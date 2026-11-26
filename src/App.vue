@@ -2,6 +2,7 @@
 import { watch } from 'vue'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
+import { useConfirm } from 'primevue/useconfirm'
 import AppHeader from './components/AppHeader.vue'
 import EditableText from './components/EditableText.vue'
 import { useSiteContent } from './composables/useSiteContent'
@@ -16,6 +17,25 @@ ensureLoaded()
 
 const { isOwner } = useAuth()
 const { refresh: refreshGames } = useGames()
+const confirm = useConfirm()
+
+// В PrimeVue 4.5 ConfirmDialog не пробрасывает dismissableMask в Dialog,
+// поэтому клик по подложке обрабатываем сами через pt. Закрываем только когда
+// и нажатие, и отпускание были на самой маске: иначе выделение текста внутри
+// окна с выходом курсора за его пределы ошибочно закрывало бы подтверждение.
+let confirmMaskPressed = false
+const confirmDialogPt = {
+  mask: {
+    onMousedown(event) {
+      confirmMaskPressed = event.target === event.currentTarget
+    },
+    onMouseup(event) {
+      const shouldClose = confirmMaskPressed && event.target === event.currentTarget
+      confirmMaskPressed = false
+      if (shouldClose) confirm.close()
+    }
+  }
+}
 
 // RLS отдаёт гостю только опубликованные игры, владельцу — ещё и черновики.
 // После входа/выхода список надо перезапросить, иначе в памяти остаётся набор
@@ -61,7 +81,10 @@ watch(isOwner, () => refreshGames())
     </footer>
 
     <Toast position="bottom-right" />
-    <ConfirmDialog />
+    <!-- Обычный диалог подтверждения не должен перетаскиваться: иначе
+         случайное движение мышью по заголовку сдвигает его с центра.
+         pt добавляет закрытие по клику на подложку, как у остальных окон. -->
+    <ConfirmDialog :draggable="false" :pt="confirmDialogPt" />
   </div>
 </template>
 
